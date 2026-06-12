@@ -1,0 +1,14 @@
+{% extends "users/email_base.html" %}
+{% block content %}
+{% if lang == "de" %}
+  <h2>Willkommen!</h2>
+  <p>Bitte bestätige deine E-Mail-Adresse, indem du auf den Button unten klickst. Der Link ist 24 Stunden gültig.</p>
+  <a href="{{ url }}" class="button">E-Mail bestätigen</a>
+  <p class="link">Oder kopiere diesen Link: <a href="{{ url }}">{{ url }}</a></p>
+{% else %}
+  <h2>Welcome!</h2>
+  <p>Please verify your email address by clicking the button below. The link is valid for 24 hours.</p>
+  <a href="{{ url }}" class="button">Verify email</a>
+  <p class="link">Or copy this link: <a href="{{ url }}">{{ url }}</a></p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "users/email_base.html" %}
+{% block content %}
+{% if lang == "de" %}
+  <h2>Dein Login-Link</h2>
+  <p>Klicke auf den Button unten, um dich einzuloggen. Der Link ist 15 Minuten gültig und kann nur einmal verwendet werden.</p>
+  <a href="{{ url }}" class="button">Jetzt einloggen</a>
+  <p class="link">Oder kopiere diesen Link: <a href="{{ url }}">{{ url }}</a></p>
+{% else %}
+  <h2>Your login link</h2>
+  <p>Click the button below to log in. The link is valid for 15 minutes and can only be used once.</p>
+  <a href="{{ url }}" class="button">Log in</a>
+  <p class="link">Or copy this link: <a href="{{ url }}">{{ url }}</a></p>
+{% endif %}
+{% endblock %}
