@@ -24,7 +24,7 @@ cd my-project
 | UI | Login, signup, dashboard, settings — white canvas, ready to build on |
 | Tests | pytest-django + Vitest + Playwright |
 | CI | GitHub Actions (backend + frontend + E2E) |
-| Deploy | Deploio via `nctl` — `./deploy.sh staging` |
+| Deploy | deplo.io or PythonAnywhere — `./deploy.sh staging` |
 
 ## Optional features (setup.sh asks)
 

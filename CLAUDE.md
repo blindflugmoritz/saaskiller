@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working in this repository.
 
 ## What this repo is
 
-**SaasKiller** is a forkable SaaS template — Django 5 + SvelteKit. The repo root IS the template. When starting a new project, fork this repo and run `./setup.sh`.
+**SaasKiller** is a forkable SaaS template — Django 5 + SvelteKit. The repo root IS the template. When starting a new project, fork this repo and run `./setup.sh`. It asks for a project name, which optional features to include, and which hosting provider to use (deplo.io or PythonAnywhere), then generates the right deploy scripts and an initial git commit.
 
 Do not build product-specific features here. Keep everything generic and replaceable.
 
@@ -13,10 +13,10 @@ Do not build product-specific features here. Keep everything generic and replace
 **Backend:** Django 5 + DRF + SimpleJWT + django-allauth  
 **Frontend:** SvelteKit + TypeScript + Tailwind 4 + shadcn-svelte  
 **DB (local):** SQLite  
-**DB (staging/prod):** Postgres on Deploio  
-**Email:** Anymail + Resend  
+**DB (staging/prod):** Postgres  
+**Email:** Anymail + Resend (console backend locally — no key needed)  
 **Tasks:** django-q2  
-**Deploy:** Deploio via `nctl` CLI  
+**Deploy:** deplo.io or PythonAnywhere (chosen during `./setup.sh`)  
 
 ## Local dev
 
@@ -26,21 +26,25 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env        # fill in keys
+cp .env.example .env        # no secrets needed to get started
 python manage.py migrate
-python manage.py runserver  # http://localhost:8000
+python manage.py createsuperuser
 
 # First time — frontend
-cd frontend
+cd ../frontend
 npm install
 cp .env.example .env
-npm run dev                 # http://localhost:5173
 ```
 
-Convenience via Makefile:
+Every day — two terminals:
 ```bash
-make dev-be          # run Django dev server
-make dev-fe          # run Vite dev server
+make dev-be          # terminal 1 — Django on http://localhost:8000
+make dev-fe          # terminal 2 — Vite on http://localhost:5173
+make dev-worker      # terminal 3 — django-q2 worker (only if tasks feature active)
+```
+
+Other Makefile targets:
+```bash
 make migrate
 make makemigrations
 make createsuperuser
@@ -51,10 +55,14 @@ make test-e2e        # playwright only (requires servers running)
 make test-all        # ALL tests — starts servers automatically, runs everything, cleans up
 ```
 
-- Backend: http://localhost:8000
+URLs:
 - Frontend: http://localhost:5173
-- Django admin: http://localhost:8000/admin
+- Django admin: http://localhost:8000/admin/
+- API docs: http://localhost:8000/api/docs/
 - DB: SQLite locally (`backend/db.sqlite3`), Postgres on staging/prod
+
+Email locally: leave `RESEND_API_KEY` empty — Django prints emails to the terminal.
+Magic link URLs appear in `make dev-be` output, copy-paste into browser.
 
 ## Project structure
 
