@@ -7,31 +7,6 @@ except ImportError:
 
 import pytest
 from rest_framework.test import APIClient
-from rest_framework_simplejwt.tokens import RefreshToken
-from users.models import User
-
-
-# ── Fixtures ──────────────────────────────────────────────────────────────────
-
-@pytest.fixture
-def client():
-    return APIClient()
-
-
-@pytest.fixture
-def user(db):
-    u = User.objects.create_user(email="apikey@example.com", language_preference="en")
-    u.email_verified = True
-    u.save()
-    return u
-
-
-@pytest.fixture
-def auth_client(user):
-    c = APIClient()
-    refresh = RefreshToken.for_user(user)
-    c.credentials(HTTP_AUTHORIZATION=f"Bearer {str(refresh.access_token)}")
-    return c
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
