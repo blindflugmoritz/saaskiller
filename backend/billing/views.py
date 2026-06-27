@@ -162,7 +162,12 @@ def _handle_subscription_event(stripe_sub):
     stripe_sub_id = stripe_sub["id"]
     customer_id = stripe_sub["customer"]
     raw_status = stripe_sub["status"]
-    period_end_ts = stripe_sub["current_period_end"]
+    period_end_ts = stripe_sub.get("current_period_end") or (
+        stripe_sub.get("items", {}).get("data", [{}])[0]
+        .get("current_period_end")
+    )
+    if not period_end_ts:
+        return  # can't sync without period end
     cancel_at_period_end = stripe_sub.get("cancel_at_period_end", False)
 
     period_end_dt = datetime.fromtimestamp(period_end_ts, tz=dt_timezone.utc)

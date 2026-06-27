@@ -1,6 +1,19 @@
-.PHONY: dev-be dev-fe dev-worker migrate makemigrations createsuperuser shell test-be test-fe test-e2e test-all check test-smoke
+.PHONY: setup dev-be dev-fe dev-worker migrate makemigrations createsuperuser shell test-be test-fe test-e2e test-all check test-smoke
 
 # ── Backend ───────────────────────────────────────────────────────────────────
+
+setup:
+	@echo "Setting up backend..."
+	cd backend && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+	cd backend && source venv/bin/activate && python manage.py migrate
+	@echo "Setting up frontend..."
+	cd frontend && npm install
+	@echo ""
+	@echo "Done. Copy .env files:"
+	@echo "  cp backend/.env.example backend/.env"
+	@echo "  cp frontend/.env.example frontend/.env"
+	@echo ""
+	@echo "Then run: make dev-be (terminal 1) + make dev-fe (terminal 2)"
 
 dev-be:
 	cd backend && source venv/bin/activate && python manage.py runserver 8002

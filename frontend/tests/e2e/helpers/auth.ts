@@ -12,7 +12,7 @@ const BACKEND_DIR = resolve(__dirname, '../../../../../backend');
  */
 export async function loginAsTestUser(context: BrowserContext): Promise<void> {
 	const output = execSync(
-		`cd ${BACKEND_DIR} && source venv/bin/activate && python manage.py create_test_token`,
+		`cd ${BACKEND_DIR} && source venv/bin/activate && DJANGO_SETTINGS_MODULE=saaskiller.settings_test python manage.py create_test_token`,
 		{ encoding: 'utf-8', shell: '/bin/bash' }
 	).trim();
 
@@ -25,8 +25,8 @@ export async function loginAsTestUser(context: BrowserContext): Promise<void> {
 
 	await context.addInitScript(
 		([a, r]: [string, string]) => {
-			localStorage.setItem('accessToken', a);
-			localStorage.setItem('refreshToken', r);
+			localStorage.setItem('sk_access_token', a);
+			localStorage.setItem('sk_refresh_token', r);
 		},
 		[accessMatch[1], refreshMatch[1]]
 	);

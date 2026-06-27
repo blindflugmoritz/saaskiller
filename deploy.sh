@@ -12,8 +12,8 @@ if [ -f .env ]; then
   export $(grep -v '^#' .env | grep -E 'NCTL_|DEPLOIO_' | xargs)
 fi
 
-BACKEND_APP="saaskiller-backend-${ENV}"
-FRONTEND_APP="saaskiller-frontend-${ENV}"
+BACKEND_APP="saaskiller-${ENV}-backend"
+FRONTEND_APP="saaskiller-${ENV}-frontend"
 REVISION=$(git rev-parse HEAD)
 
 echo "▶ Deploying to $ENV (rev: ${REVISION:0:8})"

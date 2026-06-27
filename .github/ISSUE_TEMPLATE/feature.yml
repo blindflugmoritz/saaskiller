@@ -1,0 +1,53 @@
+name: Feature request
+description: Propose a new feature or improvement
+labels: ["feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What user problem does this address?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How do we know it's done? These become test cases.
+      placeholder: |
+        - [ ] User can ...
+        - [ ] API returns ...
+        - [ ] Test covers ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - p0-now
+        - p1-soon
+        - p2-later
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - label: Backend (Django)
+        - label: Frontend (SvelteKit)
+        - label: Deploy / Infrastructure
+        - label: Auth / Users
+        - label: Billing / Stripe
+        - label: Workspaces

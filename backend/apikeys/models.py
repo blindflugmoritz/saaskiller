@@ -16,7 +16,7 @@ class ApiKey(models.Model):
         related_name="api_keys",
     )
     name = models.CharField(max_length=100)
-    key_hash = models.CharField(max_length=64)
+    key_hash = models.CharField(max_length=64, db_index=True)
     prefix = models.CharField(max_length=8)
     last_used_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -2,10 +2,10 @@
 # See: https://docs.nine.ch/docs/category/deploio
 #
 # This file documents the Deploio setup. Most config is done via
-# `nctl create app` the first time (see BLUEPRINT.md).
+# `nctl create app` the first time (see deploy-init.sh).
 # ENV vars are managed via Deploio web UI or nctl env set.
 
-# Backend app: saaskiller-backend-staging / saaskiller-backend-production
+# Backend app: saaskiller-staging-backend / saaskiller-production-backend
 # Buildpack: heroku
 # Git sub-path: backend
 # Procfile defines:
@@ -13,7 +13,7 @@
 #   release: python manage.py migrate --noinput   ← runs before every deploy
 #   worker:  python manage.py qcluster            ← only if tasks feature enabled
 
-# Frontend app: saaskiller-frontend-staging / saaskiller-frontend-production
+# Frontend app: saaskiller-staging-frontend / saaskiller-production-frontend
 # Buildpack: heroku (static)
 # Git sub-path: frontend
 # BP_STATIC_WEBROOT=build   ← tells Deploio where the SPA assets are
@@ -22,22 +22,22 @@
 
 # ── First deploy (run once) ────────────────────────────────────────────────────
 #
-# nctl create app saaskiller-backend-staging \
+# nctl create app saaskiller-staging-backend \
 #   --git-url=https://github.com/yourorg/yourrepo \
 #   --git-sub-path=backend \
 #   --buildpack-stack=heroku \
 #   --env=SECRET_KEY=xxx \
 #   --env=DATABASE_URL=postgres://... \
-#   --env=ALLOWED_HOSTS=saaskiller-backend-staging.deploio.app \
-#   --env=CORS_ALLOWED_ORIGINS=https://saaskiller-frontend-staging.deploio.app \
-#   --env=FRONTEND_URL=https://saaskiller-frontend-staging.deploio.app \
+#   --env=ALLOWED_HOSTS=saaskiller-staging-backend.deploio.app \
+#   --env=CORS_ALLOWED_ORIGINS=https://saaskiller-staging-frontend.deploio.app \
+#   --env=FRONTEND_URL=https://saaskiller-staging-frontend.deploio.app \
 #   --env=RESEND_API_KEY=xxx \
 #   --env=GOOGLE_CLIENT_ID=xxx \
 #   --env=GOOGLE_CLIENT_SECRET=xxx
 #
-# nctl create app saaskiller-frontend-staging \
+# nctl create app saaskiller-staging-frontend \
 #   --git-url=https://github.com/yourorg/yourrepo \
 #   --git-sub-path=frontend \
 #   --buildpack-stack=heroku \
-#   --env=PUBLIC_API_URL=https://saaskiller-backend-staging.deploio.app/api \
+#   --env=PUBLIC_API_URL=https://saaskiller-staging-backend.deploio.app/api \
 #   --env=BP_STATIC_WEBROOT=build
