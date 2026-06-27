@@ -157,7 +157,7 @@ E2E_BASE_URL=https://myapp-staging-frontend.deploio.app npm run test:e2e:smoke  
 2. Backend generates `magic_link_token`, sends email
 3. User clicks link → `GET /api/auth/login/<token>/`
 4. Backend validates + clears token, returns `{ access, refresh }`
-5. Frontend: access token in memory, refresh token in httpOnly cookie
+5. Frontend: both tokens stored in localStorage (`lib/utils/tokenStorage.ts`)
 6. On 401: auto-call `POST /api/auth/refresh/` → get new access token
 7. OAuth2 (Google) goes through allauth → same JWT endpoint at the end
 

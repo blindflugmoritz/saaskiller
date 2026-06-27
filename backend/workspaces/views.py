@@ -154,8 +154,8 @@ class InvitationCreateView(APIView):
             invited_by=request.user,
         )
 
-        frontend_base = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173")
-        accept_url = f"{frontend_base}/invite/{invitation.token}"
+        frontend_base = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
+        accept_url = f"{frontend_base}/workspaces/invite/{invitation.token}"
 
         send_mail(
             subject=f"You've been invited to {workspace.name}",

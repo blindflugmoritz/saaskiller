@@ -108,6 +108,22 @@ class AuthStore {
 		}
 	}
 
+	async deleteAccount() {
+		this.authLoading = true;
+		this.authError = null;
+		try {
+			await authApi.deleteAccount();
+			this.currentUser = null;
+			tokenStorage.clear();
+		} catch (err: unknown) {
+			const e = err as { detail?: string; message?: string };
+			this.authError = e.detail || e.message || 'Delete failed.';
+			throw err;
+		} finally {
+			this.authLoading = false;
+		}
+	}
+
 	logout() {
 		this.currentUser = null;
 		tokenStorage.clear();

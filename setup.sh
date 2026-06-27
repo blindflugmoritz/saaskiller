@@ -510,7 +510,7 @@ nctl update app ${PROJECT_NAME}-production-backend --project="\$DEPLOIO_PROJECT"
 ok "  Production Backend env"
 
 nctl update app ${PROJECT_NAME}-production-frontend --project="\$DEPLOIO_PROJECT" \\
-  --build-env="PUBLIC_API_URL=https://${PROJECT_NAME}-production-frontend.deploio.app/api" \\
+  --build-env="PUBLIC_API_URL=https://${PROJECT_NAME}-production-backend.deploio.app/api" \\
   --build-env="BP_STATIC_WEBROOT=build" \\
   --build-env="BP_WEB_SERVER_ENABLE_PUSH_STATE=true"
 ok "  Production Frontend env"
@@ -671,7 +671,7 @@ echo "Generating CLAUDE.md..."
 
 # Build feature list for the "was drin ist" section
 FEATURES_INCLUDED="- Auth: Magic Link (passwordless) + Google OAuth2
-- JWT: access token in memory, refresh in httpOnly cookie, auto-refresh on 401
+- JWT: both tokens in localStorage, auto-refresh on 401
 - User model: UUID pk, email-only, language preference
 - REST API + OpenAPI Docs (\`/api/docs/\`)"
 
@@ -809,7 +809,7 @@ URLs lokal:
 2. Backend generiert \`magic_link_token\`, sendet Email
 3. User klickt Link → \`GET /api/auth/login/<token>/\`
 4. Backend gibt \`{ access, refresh }\` zurück
-5. Frontend: access token in memory, refresh in httpOnly cookie
+5. Frontend: both tokens in localStorage (\`lib/utils/tokenStorage.ts\`)
 6. Bei 401: auto \`POST /api/auth/refresh/\` → neuer access token
 
 ## Development Workflow (pro Feature)

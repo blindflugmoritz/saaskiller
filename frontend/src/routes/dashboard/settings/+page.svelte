@@ -28,7 +28,7 @@
 	async function deleteAccount() {
 		deleting = true;
 		try {
-			await authStore.logout();
+			await authStore.deleteAccount();
 			goto('/');
 		} finally {
 			deleting = false;
