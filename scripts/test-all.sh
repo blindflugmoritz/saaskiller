@@ -22,7 +22,7 @@ cleanup() {
   [[ -n "$BE_PID" ]] && kill "$BE_PID" 2>/dev/null && wait "$BE_PID" 2>/dev/null || true
   [[ -n "$FE_PID" ]] && kill "$FE_PID" 2>/dev/null && wait "$FE_PID" 2>/dev/null || true
   lsof -ti:8000 | xargs kill -9 2>/dev/null || true
-  lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+  lsof -ti:5175 | xargs kill -9 2>/dev/null || true
   # Remove ephemeral E2E database
   rm -f "$BE_DIR/db_test.sqlite3"
 }
@@ -94,11 +94,11 @@ deactivate 2>/dev/null || true
 wait_for_ok "http://localhost:8000/api/health/" "Django backend"
 
 # ── 2. Start frontend dev server ──────────────────────────────────────────────
-info "Starting SvelteKit dev server on :5173..."
+info "Starting SvelteKit dev server on :5175..."
 cd "$FE_DIR"
-npm run dev > /tmp/sk-frontend.log 2>&1 &
+npm run dev -- --port 5175 > /tmp/sk-frontend.log 2>&1 &
 FE_PID=$!
-wait_for_port "http://localhost:5173" "SvelteKit frontend"
+wait_for_port "http://localhost:5175" "SvelteKit frontend"
 
 echo ""
 
