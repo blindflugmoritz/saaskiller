@@ -67,7 +67,7 @@ cp .env.example .env
 Two terminals:
 
 ```bash
-make dev-be   # terminal 1 — Django on http://localhost:8000
+make dev-be   # terminal 1 — Django on http://localhost:8002
 make dev-fe   # terminal 2 — Vite on http://localhost:5173
 ```
 
@@ -82,8 +82,8 @@ make dev-worker
 | URL | What |
 |---|---|
 | http://localhost:5173 | SvelteKit frontend |
-| http://localhost:8000/admin/ | Django admin |
-| http://localhost:8000/api/docs/ | OpenAPI / Swagger |
+| http://localhost:8002/admin/ | Django admin |
+| http://localhost:8002/api/docs/ | OpenAPI / Swagger |
 
 ### Email locally
 

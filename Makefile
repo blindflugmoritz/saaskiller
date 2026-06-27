@@ -3,7 +3,7 @@
 # ── Backend ───────────────────────────────────────────────────────────────────
 
 dev-be:
-	cd backend && source venv/bin/activate && python manage.py runserver 8000
+	cd backend && source venv/bin/activate && python manage.py runserver 8002
 
 # === FEATURE: tasks ===
 dev-worker:

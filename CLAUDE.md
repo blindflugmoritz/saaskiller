@@ -38,7 +38,7 @@ cp .env.example .env
 
 Every day — two terminals:
 ```bash
-make dev-be          # terminal 1 — Django on http://localhost:8000
+make dev-be          # terminal 1 — Django on http://localhost:8002
 make dev-fe          # terminal 2 — Vite on http://localhost:5175
 make dev-worker      # terminal 3 — django-q2 worker (only if tasks feature active)
 ```
@@ -57,8 +57,8 @@ make test-all        # ALL tests — starts servers automatically, runs everythi
 
 URLs:
 - Frontend: http://localhost:5175
-- Django admin: http://localhost:8000/admin/
-- API docs: http://localhost:8000/api/docs/
+- Django admin: http://localhost:8002/admin/
+- API docs: http://localhost:8002/api/docs/
 - DB: SQLite locally (`backend/db.sqlite3`), Postgres on staging/prod
 
 Email locally: leave `RESEND_API_KEY` empty — Django prints emails to the terminal.

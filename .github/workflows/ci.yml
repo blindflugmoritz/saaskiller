@@ -60,7 +60,7 @@ jobs:
         run: cd frontend && npm ci
       - name: Run tests
         env:
-          PUBLIC_API_URL: http://localhost:8000/api
+          PUBLIC_API_URL: http://localhost:8002/api
         run: cd frontend && npm test
 
   test-e2e:
@@ -97,12 +97,12 @@ jobs:
           CORS_ALLOWED_ORIGINS: http://localhost:5175
         run: |
           cd backend
-          python manage.py runserver 8000 &
+          python manage.py runserver 8002 &
           echo "Waiting for backend..."
-          until curl -sf http://localhost:8000/api/health/; do sleep 1; done
+          until curl -sf http://localhost:8002/api/health/; do sleep 1; done
       - name: Build frontend
         env:
-          PUBLIC_API_URL: http://localhost:8000/api
+          PUBLIC_API_URL: http://localhost:8002/api
         run: cd frontend && npm run build
       - name: Start frontend preview
         run: cd frontend && npm run preview -- --port 5175 &

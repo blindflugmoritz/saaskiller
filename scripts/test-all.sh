@@ -21,7 +21,7 @@ cleanup() {
   info "Stopping servers..."
   [[ -n "$BE_PID" ]] && kill "$BE_PID" 2>/dev/null && wait "$BE_PID" 2>/dev/null || true
   [[ -n "$FE_PID" ]] && kill "$FE_PID" 2>/dev/null && wait "$FE_PID" 2>/dev/null || true
-  lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+  lsof -ti:8002 | xargs kill -9 2>/dev/null || true
   lsof -ti:5175 | xargs kill -9 2>/dev/null || true
   # Remove ephemeral E2E database
   rm -f "$BE_DIR/db_test.sqlite3"
@@ -82,16 +82,16 @@ echo "╚═══════════════════════�
 echo ""
 
 # ── 1. Start backend (test settings: no throttling, ephemeral db) ─────────────
-info "Starting Django backend on :8000 (test settings)..."
+info "Starting Django backend on :8002 (test settings)..."
 cd "$BE_DIR"
 source venv/bin/activate
 DJANGO_SETTINGS_MODULE=saaskiller.settings_test \
   python manage.py migrate --run-syncdb --noinput -v 0 2>/dev/null
 DJANGO_SETTINGS_MODULE=saaskiller.settings_test \
-  python manage.py runserver --nothreading 8000 > /tmp/sk-backend.log 2>&1 &
+  python manage.py runserver --nothreading 8002 > /tmp/sk-backend.log 2>&1 &
 BE_PID=$!
 deactivate 2>/dev/null || true
-wait_for_ok "http://localhost:8000/api/health/" "Django backend"
+wait_for_ok "http://localhost:8002/api/health/" "Django backend"
 
 # ── 2. Start frontend dev server ──────────────────────────────────────────────
 info "Starting SvelteKit dev server on :5175..."

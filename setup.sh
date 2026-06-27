@@ -741,7 +741,7 @@ $FEATURES_INCLUDED
 
 \`\`\`bash
 # Backend
-cd backend && source venv/bin/activate && python manage.py runserver   # → http://localhost:8000
+cd backend && source venv/bin/activate && python manage.py runserver   # → http://localhost:8002
 
 # Frontend
 cd frontend && npm run dev                                              # → http://localhost:5173
@@ -762,8 +762,8 @@ make test-all        # pytest + vitest + playwright
 
 URLs lokal:
 - Frontend: http://localhost:5173
-- Django Admin: http://localhost:8000/admin/
-- API Docs: http://localhost:8000/api/docs/
+- Django Admin: http://localhost:8002/admin/
+- API Docs: http://localhost:8002/api/docs/
 
 ## Testing
 
@@ -880,7 +880,7 @@ echo "  1. Fill in backend/.env (SECRET_KEY, GOOGLE_CLIENT_ID, etc.)"
 echo "  2. cd backend && python3 -m venv venv && source venv/bin/activate"
 echo "  3. pip install -r requirements.txt && python manage.py migrate"
 echo "  4. cd ../frontend && npm install"
-echo "  5. make dev-be   (terminal 1 — Django on http://localhost:8000)"
+echo "  5. make dev-be   (terminal 1 — Django on http://localhost:8002)"
 echo "  6. make dev-fe   (terminal 2 — Vite on http://localhost:5173)"
 echo ""
 if [[ "$HOSTING" == "deploio" ]]; then
