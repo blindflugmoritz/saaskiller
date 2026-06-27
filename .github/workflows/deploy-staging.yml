@@ -1,0 +1,37 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install nctl v1.18.1
+        run: |
+          curl -sSL https://github.com/ninech/nctl/releases/download/v1.18.1/nctl_1.18.1_linux_amd64.tar.gz \
+            | tar xz -C /tmp
+          sudo mv /tmp/nctl /usr/local/bin/nctl
+          nctl --version
+
+      - name: Deploy Staging
+        env:
+          NCTL_API_CLIENT_ID: ${{ secrets.NCTL_API_CLIENT_ID }}
+          NCTL_API_CLIENT_SECRET: ${{ secrets.NCTL_API_CLIENT_SECRET }}
+          NCTL_ORGANIZATION: ${{ secrets.NCTL_ORGANIZATION }}
+        run: |
+          nctl auth login \
+            --api-client-id=$NCTL_API_CLIENT_ID \
+            --api-client-secret=$NCTL_API_CLIENT_SECRET \
+            --organization=$NCTL_ORGANIZATION
+          nctl update app saaskiller-staging-backend \
+            --git-revision=${{ github.sha }} \
+            --project=$NCTL_ORGANIZATION \
+            --skip-repo-access-check
+          nctl update app saaskiller-staging-frontend \
+            --git-revision=${{ github.sha }} \
+            --project=$NCTL_ORGANIZATION \
+            --skip-repo-access-check

@@ -1,9 +1,14 @@
-.PHONY: dev-be dev-fe migrate makemigrations createsuperuser shell test-be test-fe test-e2e test-all
+.PHONY: dev-be dev-fe dev-worker migrate makemigrations createsuperuser shell test-be test-fe test-e2e test-all
 
 # ── Backend ───────────────────────────────────────────────────────────────────
 
 dev-be:
 	cd backend && source venv/bin/activate && python manage.py runserver 8000
+
+# === FEATURE: tasks ===
+dev-worker:
+	cd backend && source venv/bin/activate && python manage.py qcluster
+# === END FEATURE: tasks ===
 
 migrate:
 	cd backend && source venv/bin/activate && python manage.py migrate

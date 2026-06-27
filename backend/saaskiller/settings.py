@@ -208,6 +208,15 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
+# ── HTTPS / Proxy (production only) ───────────────────────────────────────────
+# deplo.io and PythonAnywhere both terminate TLS at their proxy layer.
+# These settings are safe to enable unconditionally when DEBUG=False.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    CSRF_TRUSTED_ORIGINS = [o for o in CORS_ALLOWED_ORIGINS if o.startswith("https")]
+
 # ── Email ─────────────────────────────────────────────────────────────────────
 
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "SaasKiller <noreply@example.com>")

@@ -1,6 +1,6 @@
 # SaasKiller
 
-Forkable SaaS template. Django 5 + SvelteKit. Deploy to Deploio in one script.
+Forkable SaaS template. Django 5 + SvelteKit. Deploy to deplo.io or PythonAnywhere.
 
 ## Start a new project
 
@@ -44,32 +44,50 @@ cd my-project
 
 ## Local dev
 
+### First time setup
+
 ```bash
-# Backend (first time)
+# Backend
 cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env        # fill in keys
+cp .env.example .env          # no secrets needed to get started
 python manage.py migrate
-python manage.py runserver  # → http://localhost:8000
+python manage.py createsuperuser
 
-# Frontend (first time)
-cd frontend
+# Frontend
+cd ../frontend
 npm install
 cp .env.example .env
-npm run dev                 # → http://localhost:5173
 ```
 
-Or with make:
+### Every day
+
+Two terminals:
 
 ```bash
-make dev-be   # Django dev server
-make dev-fe   # Vite dev server
+make dev-be   # terminal 1 — Django on http://localhost:8000
+make dev-fe   # terminal 2 — Vite on http://localhost:5173
 ```
 
-- Django admin: http://localhost:8000/admin
-- API docs: http://localhost:8000/api/docs/
+If you use background tasks (django-q2), a third terminal:
+
+```bash
+make dev-worker
+```
+
+### What's running locally
+
+| URL | What |
+|---|---|
+| http://localhost:5173 | SvelteKit frontend |
+| http://localhost:8000/admin/ | Django admin |
+| http://localhost:8000/api/docs/ | OpenAPI / Swagger |
+
+### Email locally
+
+No email service needed. Leave `RESEND_API_KEY` empty in `backend/.env` and Django prints emails to the terminal instead. Magic link login links appear directly in the `make dev-be` output — copy and paste them into the browser.
 
 ## Tests
 
@@ -81,41 +99,41 @@ make test-all   # pytest + vitest + playwright (starts servers automatically)
 
 ## Deploy
 
-### First time (run once per environment)
+`setup.sh` asks which hosting provider you want (deplo.io, PythonAnywhere, or none) and generates the right deploy scripts for your project.
+
+### deplo.io
 
 ```bash
-# See .deploio.yaml for the full nctl create app commands
-nctl create app my-project-backend-staging \
-  --git-url=https://github.com/yourorg/my-project \
-  --git-sub-path=backend \
-  --buildpack-stack=heroku \
-  --env=SECRET_KEY=xxx \
-  --env=DATABASE_URL=postgres://...
+# First time — provision apps, databases, env vars (run once)
+export GITHUB_PAT="github_pat_..."
+bash deploy-init.sh
 
-nctl create app my-project-frontend-staging \
-  --git-url=https://github.com/yourorg/my-project \
-  --git-sub-path=frontend \
-  --buildpack-stack=heroku \
-  --env=PUBLIC_API_URL=https://my-project-backend-staging.deploio.app/api \
-  --env=BP_STATIC_WEBROOT=build
-```
-
-### Every deploy after that
-
-```bash
+# Every deploy after that
 ./deploy.sh staging
 ./deploy.sh production
 ```
 
+Staging auto-deploys on push to `main` via `.github/workflows/deploy-staging.yml`.  
 Migrations run automatically on every deploy (`release:` in Procfile).
+
+### PythonAnywhere
+
+```bash
+# Set your API token in .env
+PA_TOKEN=...   # pythonanywhere.com → Account → API Token
+
+# Deploy
+./deploy.sh staging
+./deploy.sh production
+```
 
 ## Stack
 
 **Backend:** Django 5 · DRF · SimpleJWT · django-allauth  
 **Frontend:** SvelteKit · TypeScript · Tailwind 4 · shadcn-svelte  
-**DB local:** SQLite · **DB staging/prod:** Postgres on Deploio  
-**Email:** Anymail + Resend  
-**Deploy:** Deploio (nine.ch, Swiss infrastructure)
+**DB local:** SQLite · **DB staging/prod:** Postgres  
+**Email:** Anymail + Resend (console backend locally — no key needed)  
+**Deploy:** deplo.io or PythonAnywhere (chosen in `setup.sh`)
 
 ## Architecture rules
 
