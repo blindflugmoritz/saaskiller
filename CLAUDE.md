@@ -100,16 +100,45 @@ frontend/
 
 ### E2E
 - Framework: Playwright
-- Location: `frontend/tests/`
-- Covers: signup, magic link login, OAuth login, dashboard, settings
+- Location: `frontend/tests/e2e/`
 - Run: `make test-all` — starts both servers automatically (use this)
 - Run: `make test-e2e` — runs Playwright only (requires servers already running)
 - Backend uses `saaskiller/settings_test.py` for E2E: no throttling, ephemeral SQLite DB
 
+**Auth in E2E tests — use `loginAsTestUser()`, not the magic link flow:**
+```ts
+import { loginAsTestUser, gotoApp } from './helpers/auth';
+
+test('my test', async ({ browser }) => {
+    const ctx = await browser.newContext();
+    await loginAsTestUser(ctx);          // injects JWT directly into localStorage
+    const page = await ctx.newPage();
+    await gotoApp(page, '/dashboard');   // navigate to any authenticated route
+    // ... test
+    await ctx.close();
+});
+```
+The helper calls `python manage.py create_test_token` (only works when `DEBUG=True`) which creates/reuses `e2e-test@saaskiller.local` and returns a JWT pair — no email, no browser redirect, deterministic and fast.
+
+**Smoke tests — run before every deploy:**
+```bash
+npm run test:e2e:smoke     # ~30s, @smoke-tagged tests only
+npm run test:e2e           # full suite
+npm run test:e2e:ui        # interactive Playwright UI for debugging
+E2E_BASE_URL=https://myapp-staging-frontend.deploio.app npm run test:e2e:smoke  # against staging
+```
+
+**Tagging:** Mark critical tests with `@smoke` in the test name. These run in ~30s and must be green before any deploy.
+
+**When to write E2E tests:**
+- Flow crosses page boundaries (login → redirect, save → list)
+- UI behaviour depends on auth state
+- Critical user path that must survive a deploy
+
 ### Rules
 - Always write the test first, watch it fail, then write the code
 - Never commit red tests
-- Pure functions get unit tests; components get `@testing-library/svelte` tests; flows get Playwright
+- Pure functions → Vitest unit tests; components → `@testing-library/svelte`; flows → Playwright
 
 ## Architecture rules (non-negotiable)
 
