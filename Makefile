@@ -1,4 +1,4 @@
-.PHONY: dev-be dev-fe dev-worker migrate makemigrations createsuperuser shell test-be test-fe test-e2e test-all
+.PHONY: dev-be dev-fe dev-worker migrate makemigrations createsuperuser shell test-be test-fe test-e2e test-all check test-smoke
 
 # ── Backend ───────────────────────────────────────────────────────────────────
 
@@ -26,6 +26,12 @@ shell:
 
 dev-fe:
 	cd frontend && npm run dev -- --port 5175
+
+check:
+	cd frontend && npm run check
+
+test-smoke:
+	cd frontend && npm run test:e2e:smoke
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
