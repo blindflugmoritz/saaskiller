@@ -17,7 +17,7 @@ cd my-project
 | | |
 |---|---|
 | Auth | Magic link (passwordless) + Google OAuth2 |
-| JWT | Access token in memory, refresh in httpOnly cookie, auto-refresh |
+| JWT | Access + refresh tokens in localStorage, auto-refresh on 401 |
 | User model | UUID pk, email-only, language preference |
 | REST API | Django REST Framework + OpenAPI docs at `/api/docs/` |
 | Frontend | SvelteKit + TypeScript + Tailwind 4 + shadcn-svelte |
@@ -59,7 +59,7 @@ python manage.py createsuperuser
 # Frontend
 cd ../frontend
 npm install
-cp .env.example .env
+cp .env.example .env   # PUBLIC_API_URL=http://localhost:8002/api (already set)
 ```
 
 ### Every day
@@ -68,7 +68,7 @@ Two terminals:
 
 ```bash
 make dev-be   # terminal 1 — Django on http://localhost:8002
-make dev-fe   # terminal 2 — Vite on http://localhost:5173
+make dev-fe   # terminal 2 — Vite on http://localhost:5175
 ```
 
 If you use background tasks (django-q2), a third terminal:
@@ -81,7 +81,7 @@ make dev-worker
 
 | URL | What |
 |---|---|
-| http://localhost:5173 | SvelteKit frontend |
+| http://localhost:5175 | SvelteKit frontend |
 | http://localhost:8002/admin/ | Django admin |
 | http://localhost:8002/api/docs/ | OpenAPI / Swagger |
 

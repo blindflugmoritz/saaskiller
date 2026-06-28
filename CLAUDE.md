@@ -86,7 +86,7 @@ frontend/
 
 ### Backend
 - Framework: `pytest-django`
-- Config: `backend/pytest.ini` with `DJANGO_SETTINGS_MODULE = saaskiller.settings`
+- Config: `backend/pytest.ini` with `DJANGO_SETTINGS_MODULE = saaskiller.settings_test`
 - Location: `backend/tests/test_<app>.py` — one file per app
 - Fixtures: `APIClient()` for unauthenticated, `RefreshToken.for_user(user)` for authenticated
 - Run: `make test-be` → `python -m pytest tests/ -v`
