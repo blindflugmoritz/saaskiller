@@ -19,7 +19,7 @@ def test_signup_creates_user(client):
 def test_signup_existing_user_sends_magic_link(client, user, mailoutbox):
     resp = client.post("/api/auth/signup/", {"email": user.email})
     assert resp.status_code == 200
-    assert resp.data["existing"] is True
+    assert "existing" not in resp.data
     assert len(mailoutbox) == 1
     user.refresh_from_db()
     assert user.magic_link_token is not None

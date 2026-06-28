@@ -9,6 +9,7 @@ urlpatterns = [
     path("request-magic-link/", views.request_magic_link, name="request_magic_link"),
     path("login/", views.login_with_magic_link, name="login_magic_link"),
     path("refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("logout/", views.logout, name="logout"),
     path("me/", views.current_user, name="current_user"),
     path("me/delete/", views.delete_account, name="delete_account"),
 ]

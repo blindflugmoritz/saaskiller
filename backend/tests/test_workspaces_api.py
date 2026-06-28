@@ -95,7 +95,8 @@ def test_invite_member(auth_client, workspace, mailoutbox):
         {"email": "invited@example.com", "role": "member"},
     )
     assert resp.status_code == 201
-    assert "token" in resp.data
+    assert "token" not in resp.data
+    assert resp.data.get("detail") == "Invitation sent."
 
     assert Invitation.objects.filter(
         workspace=workspace, invited_email="invited@example.com"
@@ -146,3 +147,106 @@ def test_non_owner_cannot_delete_workspace(auth_client, other_auth_client, works
 
     resp = other_auth_client.delete(f"/api/workspaces/{workspace.id}/")
     assert resp.status_code == 403
+
+
+# ── Privilege escalation guards ───────────────────────────────────────────────
+
+@pytest.mark.django_db
+def test_admin_cannot_promote_to_owner(auth_client, workspace, other_user, other_auth_client):
+    """An admin cannot promote another member to owner."""
+    membership = Membership.objects.create(workspace=workspace, user=other_user, role="member")
+    # Make the caller an admin (not owner)
+    admin_user = User.objects.create_user(email="admin@example.com", language_preference="en")
+    admin_user.email_verified = True
+    admin_user.save()
+    admin_membership = Membership.objects.create(workspace=workspace, user=admin_user, role="admin")
+    admin_client = APIClient()
+    from rest_framework_simplejwt.tokens import RefreshToken
+    refresh = RefreshToken.for_user(admin_user)
+    admin_client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(refresh.access_token)}")
+
+    resp = admin_client.patch(
+        f"/api/workspaces/{workspace.id}/members/{membership.id}/",
+        {"role": "owner"},
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_admin_cannot_modify_owner_membership(auth_client, workspace, other_user):
+    """An admin cannot touch the owner's membership."""
+    owner_membership = Membership.objects.get(workspace=workspace, role="owner")
+    admin_user = User.objects.create_user(email="admin2@example.com", language_preference="en")
+    admin_user.email_verified = True
+    admin_user.save()
+    Membership.objects.create(workspace=workspace, user=admin_user, role="admin")
+    admin_client = APIClient()
+    from rest_framework_simplejwt.tokens import RefreshToken
+    refresh = RefreshToken.for_user(admin_user)
+    admin_client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(refresh.access_token)}")
+
+    resp = admin_client.patch(
+        f"/api/workspaces/{workspace.id}/members/{owner_membership.id}/",
+        {"role": "admin"},
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_sole_owner_cannot_demote_themselves(auth_client, workspace, user):
+    """The sole owner cannot demote themselves to member."""
+    owner_membership = Membership.objects.get(workspace=workspace, user=user, role="owner")
+
+    resp = auth_client.patch(
+        f"/api/workspaces/{workspace.id}/members/{owner_membership.id}/",
+        {"role": "member"},
+    )
+    assert resp.status_code == 400
+
+
+# ── Invitation security ────────────────────────────────────────────────────────
+
+@pytest.mark.django_db
+def test_expired_invitation_rejected(other_auth_client, workspace, other_user):
+    """An expired invitation returns 404."""
+    from django.utils import timezone
+    invitation = Invitation.objects.create(
+        workspace=workspace,
+        invited_email=other_user.email,
+        role="member",
+        invited_by=workspace.owner,
+        expires_at=timezone.now() - timezone.timedelta(days=1),
+    )
+
+    resp = other_auth_client.get(f"/api/workspaces/invite/{invitation.token}/")
+    assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_wrong_email_invitation_rejected(auth_client, workspace, user):
+    """A user whose email doesn't match the invitation gets 403."""
+    invitation = Invitation.objects.create(
+        workspace=workspace,
+        invited_email="someone_else@example.com",
+        role="member",
+        invited_by=workspace.owner,
+    )
+
+    # auth_client is logged in as `user` (ws_api@example.com), not someone_else
+    resp = auth_client.get(f"/api/workspaces/invite/{invitation.token}/")
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_already_accepted_invitation_rejected(other_auth_client, workspace, other_user):
+    """Replaying an already-accepted invitation token returns 400."""
+    invitation = Invitation.objects.create(
+        workspace=workspace,
+        invited_email=other_user.email,
+        role="member",
+        invited_by=workspace.owner,
+    )
+    invitation.accept(other_user)
+
+    resp = other_auth_client.get(f"/api/workspaces/invite/{invitation.token}/")
+    assert resp.status_code == 400

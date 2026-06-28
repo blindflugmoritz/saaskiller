@@ -56,6 +56,9 @@ class Membership(models.Model):
         return f"{self.user} — {self.workspace} ({self.role})"
 
 
+INVITATION_EXPIRY_DAYS = 7
+
+
 class Invitation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="invitations")
@@ -68,6 +71,7 @@ class Invitation(models.Model):
         related_name="sent_invitations",
     )
     accepted_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -76,12 +80,17 @@ class Invitation(models.Model):
     def __str__(self):
         return f"Invite {self.invited_email} → {self.workspace} ({self.role})"
 
+    def is_expired(self):
+        return self.expires_at is not None and self.expires_at < timezone.now()
+
     def accept(self, user):
         """Create membership and mark invitation accepted."""
-        Membership.objects.get_or_create(
-            workspace=self.workspace,
-            user=user,
-            defaults={"role": self.role},
-        )
-        self.accepted_at = timezone.now()
-        self.save(update_fields=["accepted_at"])
+        from django.db import transaction
+        with transaction.atomic():
+            Membership.objects.get_or_create(
+                workspace=self.workspace,
+                user=user,
+                defaults={"role": self.role},
+            )
+            self.accepted_at = timezone.now()
+            self.save(update_fields=["accepted_at"])

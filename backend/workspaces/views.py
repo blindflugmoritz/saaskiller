@@ -1,11 +1,13 @@
+from datetime import timedelta
 from django.conf import settings
 from django.core.mail import send_mail
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from workspaces.models import Invitation, Membership, Workspace
+from workspaces.models import Invitation, INVITATION_EXPIRY_DAYS, Membership, Workspace
 from workspaces.permissions import IsWorkspaceAdminOrOwner, IsWorkspaceMember, IsWorkspaceOwner
 from workspaces.serializers import InvitationSerializer, MembershipSerializer, WorkspaceSerializer
 
@@ -77,6 +79,36 @@ class MembershipUpdateView(generics.UpdateAPIView):
 
     def get_queryset(self):
         return Membership.objects.filter(workspace_id=self.kwargs["workspace_id"])
+
+    def update(self, request, *args, **kwargs):
+        target = self.get_object()
+        new_role = request.data.get("role")
+        caller_membership = Membership.objects.get(
+            workspace_id=self.kwargs["workspace_id"], user=request.user
+        )
+        # Admins cannot touch the owner or grant owner role
+        if caller_membership.role == "admin":
+            if target.role == "owner":
+                return Response(
+                    {"detail": "Admins cannot modify the owner's membership."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            if new_role == "owner":
+                return Response(
+                    {"detail": "Admins cannot promote members to owner."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        # Even owners cannot demote themselves if sole owner
+        if target.user == request.user and new_role != "owner":
+            owner_count = Membership.objects.filter(
+                workspace_id=self.kwargs["workspace_id"], role="owner"
+            ).count()
+            if owner_count <= 1:
+                return Response(
+                    {"detail": "Cannot demote the sole owner."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        return super().update(request, *args, **kwargs)
 
 
 class MembershipRemoveView(APIView):
@@ -152,6 +184,7 @@ class InvitationCreateView(APIView):
             invited_email=email,
             role=role,
             invited_by=request.user,
+            expires_at=timezone.now() + timedelta(days=INVITATION_EXPIRY_DAYS),
         )
 
         frontend_base = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
@@ -169,7 +202,7 @@ class InvitationCreateView(APIView):
             fail_silently=False,
         )
 
-        return Response({"detail": "Invitation sent.", "token": str(invitation.token)}, status=status.HTTP_201_CREATED)
+        return Response({"detail": "Invitation sent."}, status=status.HTTP_201_CREATED)
 
 
 class InvitationAcceptView(APIView):
@@ -188,6 +221,15 @@ class InvitationAcceptView(APIView):
 
         if invitation.accepted_at is not None:
             return Response({"detail": "Invitation already accepted."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if invitation.is_expired():
+            return Response({"detail": "Invalid or expired invitation."}, status=status.HTTP_404_NOT_FOUND)
+
+        if invitation.invited_email.lower() != request.user.email.lower():
+            return Response(
+                {"detail": "This invitation was sent to a different email address."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         invitation.accept(request.user)
 

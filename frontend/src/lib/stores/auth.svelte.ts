@@ -1,5 +1,6 @@
 import { authApi, type User } from '$lib/api/auth';
 import { tokenStorage } from '$lib/utils/tokenStorage';
+import { apiError } from './utils';
 
 class AuthStore {
 	currentUser = $state<User | null>(null);
@@ -13,8 +14,7 @@ class AuthStore {
 		try {
 			return await authApi.signup(data);
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.authError = e.detail || e.message || 'Signup failed.';
+			this.authError = apiError(err, 'Signup failed.');
 			throw err;
 		} finally {
 			this.authLoading = false;
@@ -30,8 +30,7 @@ class AuthStore {
 			this.currentUser = result.user;
 			return result;
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.authError = e.detail || e.message || 'Verification failed.';
+			this.authError = apiError(err, 'Verification failed.');
 			throw err;
 		} finally {
 			this.authLoading = false;
@@ -47,8 +46,7 @@ class AuthStore {
 			this.currentUser = result.user;
 			return result;
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.authError = e.detail || e.message || 'Login failed.';
+			this.authError = apiError(err, 'Login failed.');
 			throw err;
 		} finally {
 			this.authLoading = false;
@@ -61,8 +59,7 @@ class AuthStore {
 		try {
 			return await authApi.requestMagicLink(email);
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.authError = e.detail || e.message || 'Request failed.';
+			this.authError = apiError(err, 'Request failed.');
 			throw err;
 		} finally {
 			this.authLoading = false;
@@ -75,8 +72,7 @@ class AuthStore {
 		try {
 			return await authApi.resendVerification(email);
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.authError = e.detail || e.message || 'Request failed.';
+			this.authError = apiError(err, 'Request failed.');
 			throw err;
 		} finally {
 			this.authLoading = false;
@@ -89,11 +85,14 @@ class AuthStore {
 			this.currentUser = null;
 			return;
 		}
+		this.authLoading = true;
 		try {
 			this.currentUser = await authApi.getCurrentUser();
 		} catch {
 			this.currentUser = null;
 			tokenStorage.clear();
+		} finally {
+			this.authLoading = false;
 		}
 	}
 
@@ -102,8 +101,7 @@ class AuthStore {
 			const updated = await authApi.updateUser({ languagePreference: lang });
 			this.currentUser = updated;
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.authError = e.detail || e.message || 'Update failed.';
+			this.authError = apiError(err, 'Update failed.');
 			throw err;
 		}
 	}
@@ -116,8 +114,7 @@ class AuthStore {
 			this.currentUser = null;
 			tokenStorage.clear();
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.authError = e.detail || e.message || 'Delete failed.';
+			this.authError = apiError(err, 'Delete failed.');
 			throw err;
 		} finally {
 			this.authLoading = false;
@@ -126,7 +123,14 @@ class AuthStore {
 
 	logout() {
 		this.currentUser = null;
+		this.authError = null;
 		tokenStorage.clear();
+		// Reset all stores to prevent cross-account data leakage
+		// Imported lazily to avoid circular deps at module init time
+		import('./apikeys.svelte').then((m) => m.apiKeysStore.reset());
+		import('./billing.svelte').then((m) => m.billingStore.reset());
+		import('./workspaces.svelte').then((m) => m.workspaceStore.reset());
+		import('./notifications.svelte').then((m) => m.notificationsStore.disconnect());
 	}
 }
 

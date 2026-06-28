@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { authStore } from '$lib/stores/auth.svelte';
@@ -9,11 +9,12 @@
 	let errorMessage = $state('');
 
 	onMount(async () => {
-		const token = $page.params.token;
+		const token = page.params.token!;
+		const next = page.url.searchParams.get('next') ?? '/dashboard';
 		try {
 			await authStore.loginWithMagicLink(token);
 			status = 'success';
-			setTimeout(() => goto('/dashboard'), 1000);
+			goto(next);
 		} catch (err: unknown) {
 			const e = err as { detail?: string; error?: string };
 			status = 'error';

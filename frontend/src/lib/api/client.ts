@@ -10,12 +10,22 @@ export interface ApiError {
 
 class ApiClient {
 	private baseUrl: string;
+	private refreshPromise: Promise<string | null> | null = null;
 
 	constructor(baseUrl: string) {
 		this.baseUrl = baseUrl;
 	}
 
 	private async refreshToken(): Promise<string | null> {
+		// Mutex: all concurrent 401s share one in-flight refresh
+		if (this.refreshPromise) return this.refreshPromise;
+		this.refreshPromise = this._doRefresh().finally(() => {
+			this.refreshPromise = null;
+		});
+		return this.refreshPromise;
+	}
+
+	private async _doRefresh(): Promise<string | null> {
 		const refresh = tokenStorage.getRefresh();
 		if (!refresh) return null;
 		try {
@@ -29,7 +39,8 @@ class ApiClient {
 				return null;
 			}
 			const data = await resp.json();
-			tokenStorage.set(data.access);
+			// Persist the rotated refresh token (ROTATE_REFRESH_TOKENS=True on backend)
+			tokenStorage.set(data.access, data.refresh ?? tokenStorage.getRefresh() ?? '');
 			return data.access;
 		} catch {
 			tokenStorage.clear();
@@ -61,8 +72,8 @@ class ApiClient {
 
 		let response = await fetch(url, { ...options, headers });
 
-		// Auto-refresh on 401
-		if (response.status === 401 && token) {
+		// Auto-refresh on 401 — gate on refresh token existence, not access token
+		if (response.status === 401 && tokenStorage.getRefresh()) {
 			const newToken = await this.refreshToken();
 			if (newToken) {
 				headers['Authorization'] = `Bearer ${newToken}`;

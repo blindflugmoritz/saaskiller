@@ -1,4 +1,5 @@
 import { workspacesApi, membersApi, type Workspace, type Membership, type MemberRole } from '$lib/api/workspaces';
+import { apiError } from './utils';
 
 class WorkspaceStore {
 	workspaces = $state<Workspace[]>([]);
@@ -17,8 +18,7 @@ class WorkspaceStore {
 		try {
 			this.workspaces = await workspacesApi.listWorkspaces();
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.error = e.detail || e.message || 'Failed to load workspaces.';
+			this.error = apiError(err, 'Failed to load workspaces.');
 		} finally {
 			this.loading = false;
 		}
@@ -35,8 +35,7 @@ class WorkspaceStore {
 			this.currentWorkspace = workspace;
 			this.members = members;
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.error = e.detail || e.message || 'Failed to load workspace.';
+			this.error = apiError(err, 'Failed to load workspace.');
 		} finally {
 			this.loading = false;
 		}
@@ -50,8 +49,7 @@ class WorkspaceStore {
 			this.workspaces = [...this.workspaces, workspace];
 			return workspace;
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.error = e.detail || e.message || 'Failed to create workspace.';
+			this.error = apiError(err, 'Failed to create workspace.');
 			throw err;
 		} finally {
 			this.loading = false;
@@ -68,8 +66,7 @@ class WorkspaceStore {
 		try {
 			await membersApi.inviteMember(this.currentWorkspace.id, email, role);
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.error = e.detail || e.message || 'Failed to send invitation.';
+			this.error = apiError(err, 'Failed to send invitation.');
 			throw err;
 		}
 	}
@@ -81,8 +78,7 @@ class WorkspaceStore {
 			await membersApi.removeMember(this.currentWorkspace.id, membershipId);
 			this.members = this.members.filter((m) => m.id !== membershipId);
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.error = e.detail || e.message || 'Failed to remove member.';
+			this.error = apiError(err, 'Failed to remove member.');
 			throw err;
 		}
 	}
@@ -94,10 +90,17 @@ class WorkspaceStore {
 			const updated = await membersApi.updateRole(this.currentWorkspace.id, membershipId, role);
 			this.members = this.members.map((m) => (m.id === membershipId ? updated : m));
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.error = e.detail || e.message || 'Failed to update role.';
+			this.error = apiError(err, 'Failed to update role.');
 			throw err;
 		}
+	}
+
+	reset() {
+		this.workspaces = [];
+		this.currentWorkspace = null;
+		this.members = [];
+		this.loading = false;
+		this.error = null;
 	}
 }
 

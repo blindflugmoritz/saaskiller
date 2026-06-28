@@ -86,15 +86,15 @@ describe('ApiClient — 401 auto-refresh', () => {
 		vi.mocked(tokenStorage.getAccess).mockReturnValue('expired-token');
 		vi.mocked(tokenStorage.getRefresh).mockReturnValue('valid-refresh');
 
-		// First call: 401, second call (refresh): new token, third call (retry): success
+		// First call: 401, second call (refresh): new token + rotated refresh, third call (retry): success
 		mockFetch
 			.mockResolvedValueOnce(new Response('', { status: 401 }))
-			.mockResolvedValueOnce(jsonResponse({ access: 'new-access-token' }))
+			.mockResolvedValueOnce(jsonResponse({ access: 'new-access-token', refresh: 'new-refresh-token' }))
 			.mockResolvedValueOnce(jsonResponse({ id: 1 }));
 
 		const result = await apiClient.get<{ id: number }>('/protected/');
 
-		expect(tokenStorage.set).toHaveBeenCalledWith('new-access-token');
+		expect(tokenStorage.set).toHaveBeenCalledWith('new-access-token', 'new-refresh-token');
 		expect(result).toEqual({ id: 1 });
 		expect(mockFetch).toHaveBeenCalledTimes(3);
 	});

@@ -9,6 +9,7 @@ from rest_framework.throttling import AnonRateThrottle
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 
 from .models import User
 from .serializers import UserSerializer, SignupSerializer, UserUpdateSerializer, MagicLinkRequestSerializer
@@ -54,8 +55,9 @@ def signup(request):
             user.magic_link_expires_at = timezone.now() + timedelta(minutes=15)
             user.save(update_fields=["magic_link_token", "magic_link_expires_at"])
         send_magic_link_email(user)
+        # Anti-enumeration: same response as new signup
         return Response(
-            {"message": "Account exists. We sent you a login link.", "existing": True},
+            {"message": "If this email is new, an account was created. Check your email."},
             status=status.HTTP_200_OK,
         )
     except User.DoesNotExist:
@@ -82,9 +84,14 @@ def signup(request):
     )
 
 
+class VerifyEmailThrottle(AnonRateThrottle):
+    scope = "verify_email"
+
+
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([AllowAny])
+@throttle_classes([VerifyEmailThrottle])
 def verify_email(request, token):
     try:
         user = User.objects.get(email_verification_token=token)
@@ -180,7 +187,13 @@ def login_with_magic_link(request):
         user.magic_link_expires_at = None
         if not user.email_verified:
             user.email_verified = True
-        user.save(update_fields=["magic_link_token", "magic_link_expires_at", "email_verified"])
+        # Clear dangling verification token — magic link serves as email proof
+        user.email_verification_token = None
+        user.email_verification_expires_at = None
+        user.save(update_fields=[
+            "magic_link_token", "magic_link_expires_at", "email_verified",
+            "email_verification_token", "email_verification_expires_at",
+        ])
 
     access, refresh = _issue_jwt(user)
     return Response(
@@ -202,8 +215,28 @@ def current_user(request):
     return Response(UserSerializer(request.user).data)
 
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def logout(request):
+    """Blacklist the presented refresh token so it cannot be reused."""
+    refresh_token = request.data.get("refresh")
+    if refresh_token:
+        try:
+            RefreshToken(refresh_token).blacklist()
+        except TokenError:
+            pass  # Already blacklisted or invalid — still 200
+    return Response(status=status.HTTP_200_OK)
+
+
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_account(request):
+    # Blacklist refresh token before deleting so it cannot outlive the account
+    refresh_token = request.data.get("refresh")
+    if refresh_token:
+        try:
+            RefreshToken(refresh_token).blacklist()
+        except TokenError:
+            pass
     request.user.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)

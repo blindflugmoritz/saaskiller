@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { membersApi } from '$lib/api/workspaces';
@@ -19,7 +19,7 @@
 			return;
 		}
 
-		const token = $page.params.token;
+		const token = page.params.token!;
 		try {
 			const result = await membersApi.acceptInvitation(token);
 			workspaceId = result.workspace;
@@ -52,7 +52,7 @@
 				You need to be logged in to join a workspace.
 			</p>
 			<a
-				href="/auth/login?next={encodeURIComponent($page.url.pathname)}"
+				href="/auth/login?next={encodeURIComponent(page.url.pathname)}"
 				class="inline-block bg-[--color-primary] text-[--color-primary-foreground] px-6 py-2 rounded-md text-sm font-medium"
 			>
 				Log in

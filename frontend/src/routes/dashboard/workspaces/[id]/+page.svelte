@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { workspaceStore } from '$lib/stores/workspaces.svelte';
@@ -36,7 +36,7 @@
 			goto('/auth/login');
 			return;
 		}
-		const id = $page.params.id;
+		const id = page.params.id!;
 		await workspaceStore.selectWorkspace(id);
 	});
 

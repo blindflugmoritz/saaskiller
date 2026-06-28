@@ -4,6 +4,19 @@ from django.conf import settings
 from django.db import models
 
 
+class StripeEvent(models.Model):
+    """Deduplication table — one row per processed Stripe event ID."""
+    event_id = models.CharField(max_length=255, unique=True)
+    event_type = models.CharField(max_length=100)
+    processed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "sk_stripe_events"
+
+    def __str__(self):
+        return f"{self.event_type} ({self.event_id})"
+
+
 class Plan(models.Model):
     INTERVAL_CHOICES = [
         ("month", "Monthly"),
@@ -51,7 +64,7 @@ class Subscription(models.Model):
     )
     stripe_subscription_id = models.CharField(max_length=255, unique=True)
     stripe_customer_id = models.CharField(max_length=255, db_index=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="incomplete")
     current_period_end = models.DateTimeField()
     cancel_at_period_end = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

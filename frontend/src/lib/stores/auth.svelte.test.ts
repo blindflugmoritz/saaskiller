@@ -27,8 +27,8 @@ import { tokenStorage } from '$lib/utils/tokenStorage';
 import { authStore } from './auth.svelte';
 
 // Cast mocks for type-safe .mockResolvedValue / .mockRejectedValue access
-const mockAuthApi = authApi as Record<string, ReturnType<typeof vi.fn>>;
-const mockTokenStorage = tokenStorage as Record<string, ReturnType<typeof vi.fn>>;
+const mockAuthApi = authApi as unknown as Record<string, ReturnType<typeof vi.fn>>;
+const mockTokenStorage = tokenStorage as unknown as Record<string, ReturnType<typeof vi.fn>>;
 
 const fakeUser = {
 	id: 'user-1',

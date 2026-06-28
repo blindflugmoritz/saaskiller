@@ -1,9 +1,9 @@
 # === FEATURE: stripe ===
 import stripe
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
 from datetime import datetime, timezone as dt_timezone
 
 from rest_framework import status
@@ -11,8 +11,10 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Plan, Subscription
+from .models import Plan, Subscription, StripeEvent
 from .serializers import PlanSerializer, SubscriptionSerializer
+
+User = get_user_model()
 
 
 def _get_stripe_client():
@@ -61,6 +63,12 @@ class CreateCheckoutSessionView(APIView):
         if not price_id:
             return Response(
                 {"detail": "price_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not Plan.objects.filter(stripe_price_id=price_id, is_active=True).exists():
+            return Response(
+                {"detail": "Invalid or inactive price_id."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -146,15 +154,53 @@ class StripeWebhookView(APIView):
         except stripe.error.SignatureVerificationError:
             return HttpResponse("Invalid signature", status=400)
 
+        event_id = event["id"]
         event_type = event["type"]
         data_object = event["data"]["object"]
 
-        if event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
+        _, created = StripeEvent.objects.get_or_create(
+            event_id=event_id,
+            defaults={"event_type": event_type},
+        )
+        if not created:
+            return HttpResponse(status=200)
+
+        if event_type == "checkout.session.completed":
+            _handle_checkout_session_completed(data_object)
+        elif event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
             _handle_subscription_event(data_object)
         elif event_type == "invoice.payment_failed":
             _handle_invoice_payment_failed(data_object)
 
         return HttpResponse(status=200)
+
+
+def _handle_checkout_session_completed(session):
+    """Upsert a Subscription row when a Stripe Checkout session completes."""
+    if session.get("mode") != "subscription":
+        return
+
+    stripe_sub_id = session.get("subscription")
+    customer_id = session.get("customer")
+    user_id = session.get("metadata", {}).get("user_id")
+
+    if not (stripe_sub_id and customer_id and user_id):
+        return
+
+    try:
+        user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        return
+
+    Subscription.objects.get_or_create(
+        stripe_subscription_id=stripe_sub_id,
+        defaults={
+            "user": user,
+            "stripe_customer_id": customer_id,
+            "status": "active",
+            "current_period_end": timezone.now(),
+        },
+    )
 
 
 def _handle_subscription_event(stripe_sub):

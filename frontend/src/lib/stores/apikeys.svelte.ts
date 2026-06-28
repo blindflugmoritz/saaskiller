@@ -1,4 +1,5 @@
 import { apiKeysApi, type ApiKey } from '$lib/api/apikeys';
+import { apiError } from './utils';
 
 class ApiKeysStore {
 	keys = $state<ApiKey[]>([]);
@@ -13,8 +14,7 @@ class ApiKeysStore {
 		try {
 			this.keys = await apiKeysApi.listKeys();
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.error = e.detail || e.message || 'Failed to load API keys.';
+			this.error = apiError(err, 'Failed to load API keys.');
 		} finally {
 			this.loading = false;
 		}
@@ -31,8 +31,7 @@ class ApiKeysStore {
 			this.keys = [keyRecord, ...this.keys];
 			return created;
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.error = e.detail || e.message || 'Failed to create API key.';
+			this.error = apiError(err, 'Failed to create API key.');
 			throw err;
 		} finally {
 			this.loading = false;
@@ -46,12 +45,18 @@ class ApiKeysStore {
 			await apiKeysApi.revokeKey(id);
 			this.keys = this.keys.filter((k) => k.id !== id);
 		} catch (err: unknown) {
-			const e = err as { detail?: string; message?: string };
-			this.error = e.detail || e.message || 'Failed to revoke API key.';
+			this.error = apiError(err, 'Failed to revoke API key.');
 			throw err;
 		} finally {
 			this.loading = false;
 		}
+	}
+
+	reset() {
+		this.keys = [];
+		this.loading = false;
+		this.error = null;
+		this.newKeyRaw = null;
 	}
 }
 

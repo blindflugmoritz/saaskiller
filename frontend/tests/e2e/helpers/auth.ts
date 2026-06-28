@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { resolve, dirname } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const BACKEND_DIR = resolve(__dirname, '../../../../../backend');
+const BACKEND_DIR = resolve(__dirname, '../../../../backend');
 
 /**
  * Creates a JWT token pair via Django management command and injects it into
@@ -24,9 +24,9 @@ export async function loginAsTestUser(context: BrowserContext): Promise<void> {
 	}
 
 	await context.addInitScript(
-		([a, r]: [string, string]) => {
-			localStorage.setItem('sk_access_token', a);
-			localStorage.setItem('sk_refresh_token', r);
+		(tokens: string[]) => {
+			localStorage.setItem('sk_access_token', tokens[0]);
+			localStorage.setItem('sk_refresh_token', tokens[1]);
 		},
 		[accessMatch[1], refreshMatch[1]]
 	);

@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -e
 
+# Safety guard: refuse to run inside the saaskiller template repo itself.
+# setup.sh is destructive (renames, deletes, git init). Fork first, then run.
+if git remote get-url origin 2>/dev/null | grep -q "saaskiller"; then
+  echo "Error: you are running setup.sh inside the saaskiller template repo."
+  echo "Fork the repo first, then run setup.sh in your fork."
+  exit 1
+fi
+
 echo ""
 echo "╔══════════════════════════════════════╗"
 echo "║         SaasKiller Setup             ║"
@@ -295,12 +303,16 @@ DEPLOYEOF3
 # Run once after cloning: bash deploy-init.sh
 #
 # Prerequisites:
-#   brew install ninech/taps/nctl && nctl auth login  (browser OAuth)
-#   brew install gh && gh auth login
+#   brew install ninech/taps/nctl
+#   nctl auth login                          # opens browser → https://control.nine.ch
+#   brew install gh && gh auth login         # optional, used to set GitHub Secrets
 #
 # Tokens to set before running:
-#   export GITHUB_PAT="github_pat_..."       # Fine-grained PAT, Contents read-only
-#   export RESEND_API_KEY="re_..."           # Only if email is needed
+#   export GITHUB_PAT="github_pat_..."       # → https://github.com/settings/personal-access-tokens/new
+#                                            #   Permissions: Contents = Read-only (this repo only)
+#   export RESEND_API_KEY="re_..."           # → https://resend.com/api-keys
+#   export GOOGLE_CLIENT_ID="..."           # → https://console.cloud.google.com/apis/credentials
+#   export GOOGLE_CLIENT_SECRET="..."       #   OAuth 2.0 Client ID, callback: /api/auth/google/callback/
 
 set -eo pipefail
 
@@ -527,12 +539,28 @@ nctl create apiserviceaccount ${PROJECT_NAME}-ci --project="\$DEPLOIO_PROJECT" \
   2>/dev/null && ok "  Service account '${PROJECT_NAME}-ci' created" || warn "  Already exists"
 
 echo ""
+echo ""
 echo "══════════════════════════════════════════════"
-echo "  Set these GitHub Secrets (repo → Settings → Secrets):"
+echo "  GitHub Secrets — add these at:"
+echo "  https://github.com/${_GITHUB_ORG_ARG}/${_GITHUB_REPO_ARG}/settings/secrets/actions"
 echo "══════════════════════════════════════════════"
-nctl get apiserviceaccount ${PROJECT_NAME}-ci --project="\$DEPLOIO_PROJECT" --print-credentials 2>/dev/null \\
-  || warn "Manually: nctl get apiserviceaccount ${PROJECT_NAME}-ci --print-credentials"
-echo "  gh secret set NCTL_ORGANIZATION --body \"\$DEPLOIO_PROJECT\" --repo ${_GITHUB_ORG_ARG}/${_GITHUB_REPO_ARG}"
+echo ""
+CREDS=\$(nctl get apiserviceaccount ${PROJECT_NAME}-ci --project="\$DEPLOIO_PROJECT" --print-credentials 2>/dev/null)
+if [ -n "\$CREDS" ]; then
+  CLIENT_ID=\$(echo "\$CREDS" | grep -i 'client.id\|clientId\|client_id' | awk '{print \$NF}')
+  CLIENT_SECRET=\$(echo "\$CREDS" | grep -i 'client.secret\|clientSecret\|client_secret' | awk '{print \$NF}')
+  echo "  NCTL_API_CLIENT_ID     = \$CLIENT_ID"
+  echo "  NCTL_API_CLIENT_SECRET = \$CLIENT_SECRET"
+  echo "  NCTL_ORGANIZATION      = \$DEPLOIO_PROJECT"
+  echo ""
+  echo "  Or use gh CLI:"
+  echo "  gh secret set NCTL_API_CLIENT_ID     --body \"\$CLIENT_ID\"     --repo ${_GITHUB_ORG_ARG}/${_GITHUB_REPO_ARG}"
+  echo "  gh secret set NCTL_API_CLIENT_SECRET --body \"\$CLIENT_SECRET\" --repo ${_GITHUB_ORG_ARG}/${_GITHUB_REPO_ARG}"
+  echo "  gh secret set NCTL_ORGANIZATION      --body \"\$DEPLOIO_PROJECT\" --repo ${_GITHUB_ORG_ARG}/${_GITHUB_REPO_ARG}"
+else
+  warn "Could not fetch credentials automatically. Run manually:"
+  warn "  nctl get apiserviceaccount ${PROJECT_NAME}-ci --project=\$DEPLOIO_PROJECT --print-credentials"
+fi
 INITEOF7
 
   # Production DNS section
@@ -884,26 +912,65 @@ echo "  5. make dev-be   (terminal 1 — Django on http://localhost:8002)"
 echo "  6. make dev-fe   (terminal 2 — Vite on http://localhost:5173)"
 echo ""
 if [[ "$HOSTING" == "deploio" ]]; then
-  echo "  Deploy (one-time setup):"
+  echo "  ── Deploy Setup (run once) ───────────────────────────────"
+  echo ""
+  echo "  Step A — Install nctl + login:"
+  echo "    brew install ninech/taps/nctl"
+  echo "    nctl auth login              ← opens browser, logs you into deplo.io"
+  echo "    (Account: https://control.nine.ch)"
+  echo ""
+  echo "  Step B — GitHub Personal Access Token (PAT):"
+  echo "    → https://github.com/settings/personal-access-tokens/new"
+  echo "    Name: $PROJECT_NAME-deploy"
+  echo "    Repository access: only this repo"
+  echo "    Permissions: Contents = Read-only"
+  echo "    Copy the token (starts with github_pat_...)"
+  echo ""
+  echo "  Step C — Optional API keys (set before running deploy-init.sh):"
+  echo "    Resend (email):  https://resend.com/api-keys  → create key"
+  echo "    Google OAuth:    https://console.cloud.google.com/apis/credentials → OAuth 2.0 Client"
+  echo ""
+  echo "  Step D — Run the one-time provisioning script:"
   echo "    export GITHUB_PAT=github_pat_..."
-  echo "    export RESEND_API_KEY=re_...   # optional"
+  echo "    export RESEND_API_KEY=re_...          # optional"
+  echo "    export GOOGLE_CLIENT_ID=...           # optional"
+  echo "    export GOOGLE_CLIENT_SECRET=...       # optional"
   echo "    bash deploy-init.sh"
   echo ""
-  echo "  Deploy (ongoing):"
-  echo "    ./deploy.sh staging"
+  echo "    → Creates apps + Postgres on deplo.io, sets all env vars,"
+  echo "      and prints the 3 GitHub Secrets you need to add."
+  echo ""
+  echo "  Step E — Add GitHub Secrets (URL printed by deploy-init.sh):"
+  echo "    → https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/settings/secrets/actions"
+  echo "    Add: NCTL_API_CLIENT_ID, NCTL_API_CLIENT_SECRET, NCTL_ORGANIZATION"
+  echo ""
+  echo "  ── Deploy (ongoing) ──────────────────────────────────────"
+  echo ""
+  echo "    ./deploy.sh staging          ← manual deploy"
+  if $USE_PRODUCTION; then
+    echo "    ./deploy.sh production"
+  fi
+  echo "    git push origin main         ← auto-deploys staging via GitHub Actions"
+  echo ""
+elif [[ "$HOSTING" == "pythonanywhere" ]]; then
+  echo "  ── Deploy Setup (run once) ───────────────────────────────"
+  echo ""
+  echo "  Step A — Get your PA API token:"
+  echo "    pythonanywhere.com → Account → API Token → Create"
+  echo "    Add to .env:  PA_TOKEN=your_token_here"
+  echo ""
+  echo "  Step B — First deploy (manual):"
+  echo "    Push your repo to GitHub, then SSH in:"
+  echo "    ssh $PA_USERNAME@ssh.pythonanywhere.com"
+  echo "    cd $PA_APP_DIR && git clone <your-repo-url> ."
+  echo "    bash deploy-remote.sh staging main"
+  echo ""
+  echo "  ── Deploy (ongoing) ──────────────────────────────────────"
+  echo ""
+  echo "    ./deploy.sh staging          ← push + SSH + reload"
   if $USE_PRODUCTION; then
     echo "    ./deploy.sh production"
   fi
   echo ""
-  echo "  Auto-deploy on push to main: .github/workflows/deploy-staging.yml"
-  echo "  → Set GitHub Secrets: NCTL_API_CLIENT_ID, NCTL_API_CLIENT_SECRET, NCTL_ORGANIZATION"
-elif [[ "$HOSTING" == "pythonanywhere" ]]; then
-  echo "  Deploy:"
-  echo "    Set PA_TOKEN=... in .env (PythonAnywhere → Account → API Token)"
-  echo "    ./deploy.sh staging"
-  if $USE_PRODUCTION; then
-    echo "    ./deploy.sh production"
-  fi
-  echo "  First deploy: push repo, SSH into PA, run deploy-remote.sh manually once"
 fi
 echo ""
