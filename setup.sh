@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
-# Safety guard: refuse to run inside the saaskiller template repo itself.
-# Detect by repo name (blindflugmoritz/saaskiller) — not by keyword in URL,
-# so clones with a different directory name still work fine.
+# Safety guard: refuse to run if origin still points to the template repo.
+# You must fork first — setup.sh rewrites history and renames everything.
 if git remote get-url origin 2>/dev/null | grep -qE "blindflugmoritz/saaskiller(\.git)?$"; then
-  echo "Error: you are running setup.sh inside the saaskiller template repo."
-  echo "Clone into a new directory or fork first, then run setup.sh there."
+  echo "Error: origin still points to the saaskiller template repo."
+  echo "Fork the repo on GitHub first, then clone your fork and run setup.sh."
   exit 1
 fi
 

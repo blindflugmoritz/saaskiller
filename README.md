@@ -4,13 +4,16 @@ Forkable SaaS template. Django 5 + SvelteKit. Deploy to deplo.io or PythonAnywhe
 
 ## Start a new project
 
+**1. Fork** this repo on GitHub (top right: "Fork")
+
+**2. Clone your fork and run setup:**
 ```bash
-git clone https://github.com/blindflugmoritz/saaskiller my-project
+git clone https://github.com/<your-username>/<your-project> my-project
 cd my-project
 ./setup.sh
 ```
 
-`setup.sh` asks for a project name, which optional features you need, and which hosting provider to use. It strips everything else and creates an initial git commit.
+`setup.sh` asks for a project name, which optional features you need, and which hosting provider to use. It strips everything else, replaces all references to `saaskiller` with your project name, and creates a fresh initial git commit in your fork.
 
 ## What's always included
 
