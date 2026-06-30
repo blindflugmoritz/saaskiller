@@ -2,10 +2,11 @@
 set -e
 
 # Safety guard: refuse to run inside the saaskiller template repo itself.
-# setup.sh is destructive (renames, deletes, git init). Fork first, then run.
-if git remote get-url origin 2>/dev/null | grep -q "saaskiller"; then
+# Detect by repo name (blindflugmoritz/saaskiller) — not by keyword in URL,
+# so clones with a different directory name still work fine.
+if git remote get-url origin 2>/dev/null | grep -qE "blindflugmoritz/saaskiller(\.git)?$"; then
   echo "Error: you are running setup.sh inside the saaskiller template repo."
-  echo "Fork the repo first, then run setup.sh in your fork."
+  echo "Clone into a new directory or fork first, then run setup.sh there."
   exit 1
 fi
 
