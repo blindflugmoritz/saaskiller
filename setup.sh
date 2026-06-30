@@ -17,7 +17,12 @@ echo ""
 
 # ── Project name ──────────────────────────────────────────────────────────────
 
-read -p "Project name (lowercase, no spaces, e.g. myapp): " PROJECT_NAME
+# Accept project name as first argument (used by remote_setup.sh) or ask interactively
+if [[ -n "${1:-}" ]]; then
+  PROJECT_NAME="$1"
+else
+  read -p "Project name (lowercase, no spaces, e.g. myapp): " PROJECT_NAME
+fi
 if [[ -z "$PROJECT_NAME" || "$PROJECT_NAME" =~ [^a-z0-9_-] ]]; then
   echo "Error: project name must be lowercase letters, numbers, hyphens or underscores."
   exit 1
