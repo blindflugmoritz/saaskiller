@@ -5,12 +5,12 @@ Forkable SaaS template. Django 5 + SvelteKit. Deploy to deplo.io or PythonAnywhe
 ## Start a new project
 
 ```bash
-git clone https://github.com/blindflugstudios/saaskiller my-project
+git clone https://github.com/blindflugmoritz/saaskiller my-project
 cd my-project
 ./setup.sh
 ```
 
-`setup.sh` asks for a project name and which optional features you need, strips everything else, and creates an initial git commit.
+`setup.sh` asks for a project name, which optional features you need, and which hosting provider to use. It strips everything else and creates an initial git commit.
 
 ## What's always included
 
@@ -23,7 +23,7 @@ cd my-project
 | Frontend | SvelteKit + TypeScript + Tailwind 4 + shadcn-svelte |
 | UI | Login, signup, dashboard, settings — white canvas, ready to build on |
 | Tests | pytest-django + Vitest + Playwright |
-| CI | GitHub Actions (backend + frontend + E2E) |
+| CI | GitHub Actions (lint, typecheck, backend + E2E tests) |
 | Deploy | deplo.io or PythonAnywhere — `./deploy.sh staging` |
 
 ## Optional features (setup.sh asks)
@@ -42,9 +42,9 @@ cd my-project
 | Mobile | Capacitor (SvelteKit → iOS/Android) |
 | Feedloop | Feedback widget — screen recording, screenshots, AI triage, GitHub Issues |
 
-## Local dev
+## Getting started (after setup.sh)
 
-### First time setup
+### First time
 
 ```bash
 # Backend
@@ -59,22 +59,20 @@ python manage.py createsuperuser
 # Frontend
 cd ../frontend
 npm install
-cp .env.example .env   # PUBLIC_API_URL=http://localhost:8002/api (already set)
+cp .env.example .env          # PUBLIC_API_URL=http://localhost:8002/api (already set)
 ```
 
 ### Every day
-
-Two terminals:
 
 ```bash
 make dev-be   # terminal 1 — Django on http://localhost:8002
 make dev-fe   # terminal 2 — Vite on http://localhost:5175
 ```
 
-If you use background tasks (django-q2), a third terminal:
+If you use background tasks (django-q2):
 
 ```bash
-make dev-worker
+make dev-worker   # terminal 3
 ```
 
 ### What's running locally
@@ -87,7 +85,20 @@ make dev-worker
 
 ### Email locally
 
-No email service needed. Leave `RESEND_API_KEY` empty in `backend/.env` and Django prints emails to the terminal instead. Magic link login links appear directly in the `make dev-be` output — copy and paste them into the browser.
+No email service needed. Leave `RESEND_API_KEY` empty in `backend/.env` — Django prints emails to the terminal. Magic link URLs appear directly in the `make dev-be` output, copy and paste into the browser.
+
+## Development workflow
+
+Use the Claude Code slash commands to stay in the right flow:
+
+```bash
+/feature        # describe a feature → Claude opens issue, branch, and writes failing tests
+/security-audit # scan the codebase for security issues
+/new-app        # scaffold a new Django app
+/deploy-check   # pre-deploy checklist
+```
+
+New features follow the TDD cycle: describe → failing tests → implement → green → deploy.
 
 ## Tests
 
@@ -99,7 +110,7 @@ make test-all   # pytest + vitest + playwright (starts servers automatically)
 
 ## Deploy
 
-`setup.sh` asks which hosting provider you want (deplo.io, PythonAnywhere, or none) and generates the right deploy scripts for your project.
+`setup.sh` generates the right deploy scripts for your chosen hosting provider.
 
 ### deplo.io
 
@@ -108,18 +119,18 @@ make test-all   # pytest + vitest + playwright (starts servers automatically)
 export GITHUB_PAT="github_pat_..."
 bash deploy-init.sh
 
-# Every deploy after that
+# Every deploy
 ./deploy.sh staging
 ./deploy.sh production
 ```
 
-Staging auto-deploys on push to `main` via `.github/workflows/deploy-staging.yml`.  
+Staging auto-deploys on push to `main` via GitHub Actions.  
 Migrations run automatically on every deploy (`release:` in Procfile).
 
 ### PythonAnywhere
 
 ```bash
-# Set your API token in .env
+# Set your API token in backend/.env
 PA_TOKEN=...   # pythonanywhere.com → Account → API Token
 
 # Deploy
