@@ -782,7 +782,7 @@ $FEATURES_INCLUDED
 cd backend && source venv/bin/activate && python manage.py runserver   # → http://localhost:8002
 
 # Frontend
-cd frontend && npm run dev                                              # → http://localhost:5173
+cd frontend && npm run dev                                              # → http://localhost:5175
 \`\`\`
 
 Makefile-Shortcuts:
@@ -799,9 +799,11 @@ make test-all        # pytest + vitest + playwright
 \`\`\`
 
 URLs lokal:
-- Frontend: http://localhost:5173
+- Frontend: http://localhost:5175
 - Django Admin: http://localhost:8002/admin/
 - API Docs: http://localhost:8002/api/docs/
+
+> **Ports müssen zusammenpassen:** \`backend/.env\` → \`CORS_ALLOWED_ORIGINS=http://localhost:5175\`, \`frontend/.env\` → \`PUBLIC_API_URL=http://localhost:8002/api\`. Bei Abweichungen gibt es CORS-Fehler oder leere Seiten.
 
 ## Testing
 
@@ -923,7 +925,7 @@ Every day:
 
 \`\`\`bash
 make dev-be   # Django on http://localhost:8002
-make dev-fe   # Vite on http://localhost:5173
+make dev-fe   # Vite on http://localhost:5175
 \`\`\`
 
 ## Tests
@@ -980,7 +982,7 @@ echo "Next steps:"
 echo "  1. Fill in backend/.env (SECRET_KEY, GOOGLE_CLIENT_ID, etc.)"
 echo "  2. make setup    ← creates venv, installs deps, runs migrations, npm install"
 echo "  3. make dev-be   (terminal 1 — Django on http://localhost:8002)"
-echo "  4. make dev-fe   (terminal 2 — Vite on http://localhost:5173)"
+echo "  4. make dev-fe   (terminal 2 — Vite on http://localhost:5175)"
 echo ""
 if [[ "$HOSTING" == "deploio" ]]; then
   echo "  ── Deploy Setup (run once) ───────────────────────────────"

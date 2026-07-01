@@ -13,6 +13,9 @@ def page_by_path(request):
     path = request.query_params.get("path", "/")
     if not path.startswith("/"):
         path = f"/{path}"
+    # feincms3 stores paths with trailing slash — normalize so /home and /home/ both resolve
+    if not path.endswith("/"):
+        path = f"{path}/"
 
     page = Page.objects.filter(path=path, is_active=True).first()
     if page is None:
