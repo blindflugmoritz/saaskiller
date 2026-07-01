@@ -45,6 +45,13 @@ INSTALLED_APPS = [
     "drf_spectacular",
     # Local
     "users",
+    # === FEATURE: cms ===
+    "content_editor",
+    "feincms3",
+    "tree_queries",
+    "imagefield",
+    "content",
+    # === END FEATURE: cms ===
     # === FEATURE: workspaces ===
     "workspaces",
     # === END FEATURE: workspaces ===

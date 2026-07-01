@@ -50,8 +50,10 @@ USE_APIKEYS=false
 USE_GITHUB_OAUTH=false
 USE_TASKS=false
 USE_FEEDLOOP=false
+USE_CMS=false
 
 ask "Multi-user workspaces & teams?" && USE_WORKSPACES=true
+ask "CMS — pages, blog, structured content (feincms3, headless)?" && USE_CMS=true
 ask "Billing & payments (Stripe)?" && USE_STRIPE=true
 ask "Background tasks (django-q2)?" && USE_TASKS=true
 ask "Realtime / websockets (django-channels)?" && USE_WEBSOCKETS=true
@@ -205,6 +207,7 @@ if text != original:
 
 $USE_STRIPE       || strip_feature stripe       backend/billing   frontend/src/routes/dashboard/billing
 $USE_WORKSPACES   || strip_feature workspaces   backend/workspaces frontend/src/routes/dashboard/workspaces frontend/src/routes/workspaces
+$USE_CMS          || strip_feature cms          backend/content   "frontend/src/routes/[...path]"
 $USE_TASKS        || strip_feature tasks        backend/tasks
 $USE_WEBSOCKETS   || strip_feature websockets   backend/realtime
 $USE_S3           || strip_feature s3           backend/storage
@@ -708,6 +711,8 @@ FEATURES_INCLUDED="- Auth: Magic Link (passwordless) + Google OAuth2
 - User model: UUID pk, email-only, language preference
 - REST API + OpenAPI Docs (\`/api/docs/\`)"
 
+$USE_CMS        && FEATURES_INCLUDED="$FEATURES_INCLUDED
+- CMS: feincms3 headless, pages/blog/structured content, Django admin editor, /api/cms/page/?path=/"
 $USE_S3         && FEATURES_INCLUDED="$FEATURES_INCLUDED
 - S3 Storage: nine.ch, presigned upload/download URLs"
 $USE_TASKS      && FEATURES_INCLUDED="$FEATURES_INCLUDED

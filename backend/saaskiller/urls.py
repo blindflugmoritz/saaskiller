@@ -39,6 +39,9 @@ urlpatterns = [
     # === FEATURE: stripe ===
     path("api/billing/", include("billing.urls")),
     # === END FEATURE: stripe ===
+    # === FEATURE: cms ===
+    path("api/cms/", include("content.urls")),
+    # === END FEATURE: cms ===
     # Static + SPA fallback
     re_path(r"^static/(?P<path>.*)$", serve, {"document_root": os.path.join(FRONTEND_BUILD, "..", "build")}),
     re_path(r"^.*$", spa),

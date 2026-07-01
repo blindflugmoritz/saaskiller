@@ -13,6 +13,14 @@ django-allauth[socialaccount]==65.18.0
 dj-rest-auth[with_social]==7.2.0
 django-ratelimit==4.1.0
 
+# === FEATURE: cms ===
+feincms3==5.6.0
+django-content-editor==7.1.0
+html-sanitizer==2.4.4
+django-imagefield==0.15.0
+Pillow==11.2.1
+# === END FEATURE: cms ===
+
 # Testing
 pytest
 pytest-django
