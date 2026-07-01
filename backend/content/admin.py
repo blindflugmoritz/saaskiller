@@ -29,6 +29,6 @@ class PageAdmin(ContentEditor, TreeAdmin):
     fieldsets = [
         (None, {"fields": ("title", "slug", "is_active")}),
         ("SEO", {"fields": ("meta_description",), "classes": ("collapse",)}),
-        ("Advanced", {"fields": ("parent", "position", "static_path", "path", "template_name"), "classes": ("collapse",)}),
+        ("Advanced", {"fields": ("parent", "position", "static_path", "path"), "classes": ("collapse",)}),
     ]
     # === END FEATURE: cms ===
