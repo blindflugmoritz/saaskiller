@@ -895,6 +895,77 @@ CLAUDEEOF
 
 echo "  CLAUDE.md generated."
 
+# ── Generate README.md ────────────────────────────────────────────────────────
+
+echo "Generating README.md..."
+
+cat > README.md << READMEEOF
+# $PROJECT_NAME
+
+<!-- Describe what this project does and who it's for. -->
+
+## Local dev
+
+\`\`\`bash
+# First time — backend
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+python manage.py migrate
+python manage.py createsuperuser
+
+# First time — frontend
+cd ../frontend
+npm install
+cp .env.example .env
+\`\`\`
+
+Every day:
+
+\`\`\`bash
+make dev-be   # Django on http://localhost:8002
+make dev-fe   # Vite on http://localhost:5173
+\`\`\`
+
+## Tests
+
+\`\`\`bash
+make test-be    # pytest
+make test-fe    # vitest
+make test-all   # pytest + vitest + playwright
+\`\`\`
+
+## Deploy
+
+$(if [[ "$HOSTING" == "deploio" ]]; then
+echo "\`\`\`bash
+# First time — provision apps, databases, env vars
+export GITHUB_PAT=\"github_pat_...\"
+bash deploy-init.sh
+
+# Every deploy
+./deploy.sh staging
+./deploy.sh production
+\`\`\`"
+elif [[ "$HOSTING" == "pythonanywhere" ]]; then
+echo "\`\`\`bash
+# Set PA_TOKEN in .env (pythonanywhere.com → Account → API Token)
+./deploy.sh staging
+./deploy.sh production
+\`\`\`"
+else
+echo "No hosting configured. See CLAUDE.md for local setup."
+fi)
+
+## Stack
+
+Built on [SaasKiller](https://github.com/blindflugmoritz/saaskiller) — Django 5 + SvelteKit.
+READMEEOF
+
+echo "  README.md generated."
+
 # ── Git setup ─────────────────────────────────────────────────────────────────
 
 echo "Setting up git..."
