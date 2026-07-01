@@ -906,20 +906,12 @@ cat > README.md << READMEEOF
 
 ## Local dev
 
-\`\`\`bash
-# First time — backend
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-python manage.py migrate
-python manage.py createsuperuser
+First time after cloning:
 
-# First time — frontend
-cd ../frontend
-npm install
-cp .env.example .env
+\`\`\`bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+make setup     # creates venv, pip install, migrate, npm install
 \`\`\`
 
 Every day:
@@ -981,11 +973,9 @@ echo "╚═══════════════════════�
 echo ""
 echo "Next steps:"
 echo "  1. Fill in backend/.env (SECRET_KEY, GOOGLE_CLIENT_ID, etc.)"
-echo "  2. cd backend && python3 -m venv venv && source venv/bin/activate"
-echo "  3. pip install -r requirements.txt && python manage.py migrate"
-echo "  4. cd ../frontend && npm install"
-echo "  5. make dev-be   (terminal 1 — Django on http://localhost:8002)"
-echo "  6. make dev-fe   (terminal 2 — Vite on http://localhost:5173)"
+echo "  2. make setup    ← creates venv, installs deps, runs migrations, npm install"
+echo "  3. make dev-be   (terminal 1 — Django on http://localhost:8002)"
+echo "  4. make dev-fe   (terminal 2 — Vite on http://localhost:5173)"
 echo ""
 if [[ "$HOSTING" == "deploio" ]]; then
   echo "  ── Deploy Setup (run once) ───────────────────────────────"
