@@ -3,7 +3,7 @@ djangorestframework==3.14.0
 djangorestframework-simplejwt==5.3.1
 django-cors-headers==4.3.1
 python-dotenv==1.0.0
-django-anymail[resend]==10.3
+django-anymail[resend]==15.0
 dj-database-url==2.3.0
 psycopg[binary]
 gunicorn==23.0.0
