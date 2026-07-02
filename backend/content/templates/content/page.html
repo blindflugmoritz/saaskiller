@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page.title }}</title>
+
+    {# SEO — meta description #}
+    {% if page.meta_description %}
+    <meta name="description" content="{{ page.meta_description }}" />
+    {% endif %}
+
+    {# TODO: Canonical URL — add when domain is configured
+    <link rel="canonical" href="{{ request.build_absolute_uri }}" /> #}
+
+    {# TODO: Open Graph / Twitter — add when og_image / og_title are available on Page model
+    <meta property="og:title" content="{{ page.title }}" />
+    <meta property="og:description" content="{{ page.meta_description }}" />
+    <meta property="og:url" content="{{ request.build_absolute_uri }}" />
+    <meta name="twitter:card" content="summary_large_image" />  #}
+
+    {# Island assets: Tailwind CSS (shared design tokens) + Svelte islands JS.
+       Both are served by whitenoise after collectstatic. #}
+    {% load islands %}
+    {% island_assets %}
+
+    {# Pass the API base URL to islands via <meta> so island components can reach the DRF API.
+       Islands read: document.querySelector('meta[name="api-url"]').content #}
+    <meta name="api-url" content="/api" />
+</head>
+<body class="bg-[--color-background] text-[--color-foreground]">
+
+    {# ── Minimal nav stub — replace with your app's navigation component ── #}
+    <header class="border-b border-[--color-border] px-6 py-3">
+        <a href="/" class="text-sm font-semibold hover:underline">← Home</a>
+    </header>
+
+    {# ── Page content ── #}
+    <main>
+        <article class="max-w-3xl mx-auto px-6 py-12">
+            <h1 class="text-3xl font-bold mb-8">{{ page.title }}</h1>
+
+            {% for block in regions.main %}
+                <div class="mb-6">{{ block }}</div>
+            {% empty %}
+                {# Page exists but has no content yet — only visible in admin preview #}
+                <p class="text-[--color-muted-foreground] italic">No content yet.</p>
+            {% endfor %}
+        </article>
+    </main>
+
+</body>
+</html>

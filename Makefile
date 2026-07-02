@@ -1,4 +1,4 @@
-.PHONY: setup dev-be dev-fe dev-worker migrate makemigrations createsuperuser shell test-be test-fe test-e2e test-all check test-smoke
+.PHONY: setup dev-be dev-fe dev-worker dev-islands build-islands migrate makemigrations createsuperuser shell test-be test-fe test-e2e test-all check test-smoke
 
 # ── Backend ───────────────────────────────────────────────────────────────────
 
@@ -39,6 +39,14 @@ shell:
 
 dev-fe:
 	cd frontend && npm run dev -- --port 5175
+
+# Build Svelte islands for CMS pages (run once before collectstatic; output → backend/static/islands/)
+build-islands:
+	cd frontend && npm run build:islands
+
+# Watch-mode islands build for local CMS development (terminal 4 when CMS feature active)
+dev-islands:
+	cd frontend && npm run dev:islands
 
 check:
 	cd frontend && npm run check

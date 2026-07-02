@@ -1,0 +1,11 @@
+{
+  "src/islands/entry.ts": {
+    "file": "islands.js",
+    "name": "islands",
+    "src": "src/islands/entry.ts",
+    "isEntry": true,
+    "css": [
+      "islands.css"
+    ]
+  }
+}

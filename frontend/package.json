@@ -15,7 +15,9 @@
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test --grep @smoke",
     "test:e2e:ui": "playwright test --ui",
-    "cap:build": "npm run build && npx cap sync"
+    "cap:build": "npm run build && npx cap sync",
+    "build:islands": "vite build --config vite.islands.config.ts",
+    "dev:islands": "vite build --config vite.islands.config.ts --watch"
   },
   "devDependencies": {
     "@capacitor/android": "^6.0.0",

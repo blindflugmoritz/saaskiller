@@ -207,7 +207,7 @@ if text != original:
 
 $USE_STRIPE       || strip_feature stripe       backend/billing   frontend/src/routes/dashboard/billing
 $USE_WORKSPACES   || strip_feature workspaces   backend/workspaces frontend/src/routes/dashboard/workspaces frontend/src/routes/workspaces
-$USE_CMS          || strip_feature cms          backend/content   "frontend/src/routes/[...path]"
+$USE_CMS          || strip_feature cms          backend/content   frontend/src/islands   frontend/vite.islands.config.ts
 $USE_TASKS        || strip_feature tasks        backend/tasks
 $USE_WEBSOCKETS   || strip_feature websockets   backend/realtime
 $USE_S3           || strip_feature s3           backend/storage
@@ -712,7 +712,7 @@ FEATURES_INCLUDED="- Auth: Magic Link (passwordless) + Google OAuth2
 - REST API + OpenAPI Docs (\`/api/docs/\`)"
 
 $USE_CMS        && FEATURES_INCLUDED="$FEATURES_INCLUDED
-- CMS: feincms3 headless, pages/blog/structured content, Django admin editor, /api/cms/page/?path=/"
+- CMS: feincms3, server-rendered HTML by Django (crawlable, instant-live on save), Svelte islands for interactivity, JSON API at /api/cms/page/?path=/, admin editor"
 $USE_S3         && FEATURES_INCLUDED="$FEATURES_INCLUDED
 - S3 Storage: nine.ch, presigned upload/download URLs"
 $USE_TASKS      && FEATURES_INCLUDED="$FEATURES_INCLUDED

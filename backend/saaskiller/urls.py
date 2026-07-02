@@ -1,26 +1,12 @@
 import os
 from django.contrib import admin
 from django.urls import path, include, re_path
-from django.http import JsonResponse
 from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-
-FRONTEND_BUILD = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "frontend", "build"
-)
-
-
-def health(request):
-    return JsonResponse({"status": "ok"})
-
-
-def spa(request, path=""):
-    index = os.path.join(FRONTEND_BUILD, "index.html")
-    if os.path.exists(index):
-        return serve(request, "index.html", document_root=FRONTEND_BUILD)
-    return JsonResponse({"error": "Frontend not built. Run: cd frontend && npm run build"}, status=404)
-
+from saaskiller.views import health, spa, FRONTEND_BUILD
+# === FEATURE: cms ===
+from content.views import cms_page_html
+# === END FEATURE: cms ===
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -42,7 +28,14 @@ urlpatterns = [
     # === FEATURE: cms ===
     path("api/cms/", include("content.urls")),
     # === END FEATURE: cms ===
-    # Static + SPA fallback
+    # Static assets from the SvelteKit frontend build
     re_path(r"^static/(?P<path>.*)$", serve, {"document_root": os.path.join(FRONTEND_BUILD, "..", "build")}),
+    # === FEATURE: cms ===
+    # CMS HTML catch-all: must come BEFORE the SPA fallback so known CMS paths get
+    # server-rendered HTML (crawlable, instant-live). Unknown paths fall through to
+    # the SPA inside the view itself (cms_page_html calls spa() when no Page found).
+    re_path(r"^(?P<path>.*)$", cms_page_html),
+    # === END FEATURE: cms ===
+    # SPA fallback — serves SvelteKit index.html for /dashboard, /auth/*, etc.
     re_path(r"^.*$", spa),
 ]

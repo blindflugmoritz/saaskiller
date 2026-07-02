@@ -252,6 +252,12 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
+# === FEATURE: cms ===
+# Include backend/static/ so the islands Vite build output (islands.js, islands.css)
+# is picked up by collectstatic and served by whitenoise.
+# Run `make build-islands` before `python manage.py collectstatic`.
+STATICFILES_DIRS = [BASE_DIR / "static"]
+# === END FEATURE: cms ===
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
