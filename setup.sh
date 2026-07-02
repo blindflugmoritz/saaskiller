@@ -53,7 +53,7 @@ USE_FEEDLOOP=false
 USE_CMS=false
 
 ask "Multi-user workspaces & teams?" && USE_WORKSPACES=true
-ask "CMS — pages, blog, structured content (feincms3, headless)?" && USE_CMS=true
+ask "CMS — pages, blog, structured content (feincms3, server-rendered, crawlable)?" && USE_CMS=true
 ask "Billing & payments (Stripe)?" && USE_STRIPE=true
 ask "Background tasks (django-q2)?" && USE_TASKS=true
 ask "Realtime / websockets (django-channels)?" && USE_WEBSOCKETS=true
@@ -796,6 +796,8 @@ make shell
 make test-be         # pytest
 make test-fe         # vitest
 make test-all        # pytest + vitest + playwright
+$(${USE_CMS} && echo 'make build-islands   # Svelte islands build → backend/static/islands/ (run before collectstatic)
+make dev-islands     # watch-mode islands build (terminal 4, only needed when editing islands)')
 \`\`\`
 
 URLs lokal:
