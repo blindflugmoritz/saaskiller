@@ -30,7 +30,7 @@ def page_by_path(request):
         "title": page.title,
         "slug": page.slug,
         "path": page.path,
-        "metaDescription": page.meta_description,
+        "meta_description": page.meta_description,
         "regions": regions,
     })
     # === END FEATURE: cms ===
@@ -47,6 +47,10 @@ def page_list(request):
 
 
 # === FEATURE: cms ===
+# Prefixes that belong to Django/API — never attempt a CMS page lookup for these.
+_NON_CMS_PREFIXES = ("api/", "admin/", "static/", "media/", "accounts/")
+
+
 @cache_page(60 * 15)  # 15-minute TTL — post_save signal in signals.py clears on edits
 def cms_page_html(request, path=""):
     """Server-render a feincms3 CMS page as full HTML.
@@ -57,8 +61,18 @@ def cms_page_html(request, path=""):
     The @cache_page decorator caches the rendered HTML in Django's cache backend.
     Cache is invalidated by post_save/post_delete signals on Page and plugin models
     (see content/signals.py) so editors see changes immediately after saving.
+
+    SECURITY NOTE: PageRichText and PageHTML content is rendered as raw HTML via
+    mark_safe(). This is intentional — these fields are only editable by trusted
+    Django superusers/staff via the admin. Never expose them to untrusted input.
     """
     from saaskiller.views import spa
+
+    # Pass through paths that belong to Django internals / API — avoids turning
+    # broken /api/typo/ requests into 200 OK HTML responses seen by API clients.
+    stripped = path.lstrip("/")
+    if any(stripped.startswith(p) for p in _NON_CMS_PREFIXES):
+        return spa(request, path)
 
     # Normalise to feincms3 convention: /home/ (leading + trailing slash)
     if not path.startswith("/"):

@@ -40,11 +40,14 @@
         <article class="max-w-3xl mx-auto px-6 py-12">
             <h1 class="text-3xl font-bold mb-8">{{ page.title }}</h1>
 
-            {% for block in regions.main %}
-                <div class="mb-6">{{ block }}</div>
-            {% empty %}
-                {# Page exists but has no content yet — only visible in admin preview #}
-                <p class="text-[--color-muted-foreground] italic">No content yet.</p>
+            {# Iterate all regions so forks that add extra regions get them rendered too. #}
+            {# The default model has one region ("main"). #}
+            {% for region_key, blocks in regions.items %}
+                {% for block in blocks %}
+                    <div class="mb-6">{{ block }}</div>
+                {% empty %}
+                    <p class="text-[--color-muted-foreground] italic">No content yet.</p>
+                {% endfor %}
             {% endfor %}
         </article>
     </main>

@@ -193,7 +193,7 @@ if text != original:
     -type f \( \
       -name "*.py"   -o -name "*.ts"   -o -name "*.js"  -o \
       -name "*.svelte" -o -name "*.json" -o -name "*.yml" -o \
-      -name "*.yaml" -o -name "*.txt"  -o -name "Procfile" \
+      -name "*.yaml" -o -name "*.txt"  -o -name "Procfile" -o -name "Makefile" \
     \) 2>/dev/null)
 
   # Remove any extra directories passed as arguments
@@ -207,7 +207,7 @@ if text != original:
 
 $USE_STRIPE       || strip_feature stripe       backend/billing   frontend/src/routes/dashboard/billing
 $USE_WORKSPACES   || strip_feature workspaces   backend/workspaces frontend/src/routes/dashboard/workspaces frontend/src/routes/workspaces
-$USE_CMS          || strip_feature cms          backend/content   frontend/src/islands   frontend/vite.islands.config.ts
+$USE_CMS          || strip_feature cms          backend/content   backend/static/islands   frontend/src/islands   frontend/vite.islands.config.ts
 $USE_TASKS        || strip_feature tasks        backend/tasks
 $USE_WEBSOCKETS   || strip_feature websockets   backend/realtime
 $USE_S3           || strip_feature s3           backend/storage

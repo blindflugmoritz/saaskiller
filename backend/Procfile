@@ -1,5 +1,5 @@
 web: gunicorn saaskiller.wsgi --bind 0.0.0.0:$PORT --workers 2
-release: python manage.py migrate --noinput
+release: python manage.py migrate --noinput && python manage.py createcachetable --no-color 2>/dev/null || true
 # === FEATURE: tasks ===
 worker: python manage.py qcluster
 # === END FEATURE: tasks ===

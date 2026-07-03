@@ -5,7 +5,7 @@
 setup:
 	@echo "Setting up backend..."
 	cd backend && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt
-	cd backend && source venv/bin/activate && python manage.py migrate
+	cd backend && source venv/bin/activate && python manage.py migrate && python manage.py createcachetable --no-color 2>/dev/null || true
 	@echo "Setting up frontend..."
 	cd frontend && npm install
 	@echo ""
@@ -24,7 +24,7 @@ dev-worker:
 # === END FEATURE: tasks ===
 
 migrate:
-	cd backend && source venv/bin/activate && python manage.py migrate
+	cd backend && source venv/bin/activate && python manage.py migrate && python manage.py createcachetable --no-color 2>/dev/null || true
 
 makemigrations:
 	cd backend && source venv/bin/activate && python manage.py makemigrations
@@ -40,6 +40,7 @@ shell:
 dev-fe:
 	cd frontend && npm run dev -- --port 5175
 
+# === FEATURE: cms ===
 # Build Svelte islands for CMS pages (run once before collectstatic; output → backend/static/islands/)
 build-islands:
 	cd frontend && npm run build:islands
@@ -47,6 +48,7 @@ build-islands:
 # Watch-mode islands build for local CMS development (terminal 4 when CMS feature active)
 dev-islands:
 	cd frontend && npm run dev:islands
+# === END FEATURE: cms ===
 
 check:
 	cd frontend && npm run check

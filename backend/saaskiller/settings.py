@@ -257,6 +257,17 @@ STORAGES = {
 # is picked up by collectstatic and served by whitenoise.
 # Run `make build-islands` before `python manage.py collectstatic`.
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# DatabaseCache — shared across all gunicorn workers so post_save signals in
+# content/signals.py actually invalidate the cache for every worker, not just the
+# one that handled the admin request. Zero extra dependencies (uses the same DB).
+# The cache table is created by the release job: `python manage.py createcachetable`
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "cache_table",
+    }
+}
 # === END FEATURE: cms ===
 
 MEDIA_URL = "/media/"

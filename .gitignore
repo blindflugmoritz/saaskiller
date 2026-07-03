@@ -22,6 +22,9 @@ frontend/build/
 frontend/.env
 frontend/.env.local
 
+# Islands build — internal Vite state, not needed at runtime
+backend/static/islands/.vite/
+
 # Test / coverage
 .pytest_cache/
 htmlcov/
