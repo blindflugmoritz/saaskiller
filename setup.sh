@@ -377,7 +377,7 @@ nctl create app ${PROJECT_NAME}-staging-backend \\
   --git-revision=main \\
   --git-username=x-token-auth \\
   --git-password="\$GITHUB_PAT" \\
-  --deploy-job-command="python manage.py collectstatic --noinput && python manage.py migrate --noinput" \\
+  --deploy-job-command="python manage.py collectstatic --noinput && python manage.py migrate --noinput && python manage.py createcachetable --no-color 2>/dev/null || true" \\
   --deploy-job-name=release \\
   2>/dev/null && ok "  ${PROJECT_NAME}-staging-backend" || warn "  Already exists"
 
@@ -403,7 +403,7 @@ nctl create app ${PROJECT_NAME}-production-backend \\
   --git-sub-path=backend \\
   --git-username=x-token-auth \\
   --git-password="\$GITHUB_PAT" \\
-  --deploy-job-command="python manage.py collectstatic --noinput && python manage.py migrate --noinput" \\
+  --deploy-job-command="python manage.py collectstatic --noinput && python manage.py migrate --noinput && python manage.py createcachetable --no-color 2>/dev/null || true" \\
   --deploy-job-name=release \\
   2>/dev/null && ok "  ${PROJECT_NAME}-production-backend" || warn "  Already exists"
 
@@ -789,6 +789,7 @@ Makefile-Shortcuts:
 \`\`\`bash
 make dev-be          # Django dev server
 make dev-fe          # Vite dev server
+$(if $USE_CMS; then echo "make dev-islands     # Islands watch build (terminal 3, CMS only)"; fi)
 make migrate
 make makemigrations
 make createsuperuser
@@ -872,6 +873,25 @@ elif [[ "$HOSTING" == "pythonanywhere" ]]; then
 else
   echo "7. Deploy        (kein Hosting konfiguriert)"
 fi)
+$(if $USE_CMS; then cat << 'CMSEOF'
+
+## CMS / Islands
+
+Pages werden von Django als volles HTML gerendert (crawlbar, kein Node-Server).
+Interaktive Svelte-Komponenten werden als Islands eingebettet.
+
+**Islands-Assets** (\`backend/static/islands/\`) sind **committed** (kein Build-Step auf Deploio nötig).
+Pflichtschritt vor jedem Deploy wenn Islands-Komponenten geändert wurden:
+\`\`\`bash
+make build-islands
+git add backend/static/islands/
+git commit -m "chore: rebuild islands"
+\`\`\`
+CI (\`islands-drift\`-Job) schlägt an wenn Assets nicht aktuell sind.
+
+Admin-URL für CMS: \`/admin/content/page/\`
+CMSEOF
+fi)
 \`\`\`
 
 ## API Conventions
@@ -900,6 +920,7 @@ fi)
 - \`.env\`, \`db.sqlite3\`, \`venv/\`, \`node_modules/\` committen ❌
 - \`tailwind.config.js\` anlegen ❌
 - Rote Tests committen ❌
+$(if $USE_CMS; then echo "- Islands-Komponenten ändern ohne \`make build-islands\` → commit ❌"; fi)
 CLAUDEEOF
 
 echo "  CLAUDE.md generated."
