@@ -1,3 +1,4 @@
+// === FEATURE: apikeys ===
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Guard: skip entire suite if the module doesn't exist
@@ -124,3 +125,4 @@ describe('apiKeysApi', () => {
 		});
 	});
 });
+// === END FEATURE: apikeys ===

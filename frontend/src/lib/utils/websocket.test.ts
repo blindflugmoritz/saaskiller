@@ -1,3 +1,4 @@
+// === FEATURE: websockets ===
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Guard: skip entire suite if the module doesn't exist
@@ -212,3 +213,4 @@ describe('WebSocketClient', () => {
 		});
 	});
 });
+// === END FEATURE: websockets ===

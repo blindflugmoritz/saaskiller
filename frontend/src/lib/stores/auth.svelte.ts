@@ -127,10 +127,18 @@ class AuthStore {
 		tokenStorage.clear();
 		// Reset all stores to prevent cross-account data leakage
 		// Imported lazily to avoid circular deps at module init time
+		// === FEATURE: apikeys ===
 		import('./apikeys.svelte').then((m) => m.apiKeysStore.reset());
+		// === END FEATURE: apikeys ===
+		// === FEATURE: stripe ===
 		import('./billing.svelte').then((m) => m.billingStore.reset());
+		// === END FEATURE: stripe ===
+		// === FEATURE: workspaces ===
 		import('./workspaces.svelte').then((m) => m.workspaceStore.reset());
+		// === END FEATURE: workspaces ===
+		// === FEATURE: websockets ===
 		import('./notifications.svelte').then((m) => m.notificationsStore.disconnect());
+		// === END FEATURE: websockets ===
 	}
 }
 

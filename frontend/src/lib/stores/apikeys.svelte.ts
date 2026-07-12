@@ -1,3 +1,4 @@
+// === FEATURE: apikeys ===
 import { apiKeysApi, type ApiKey } from '$lib/api/apikeys';
 import { apiError } from './utils';
 
@@ -61,3 +62,4 @@ class ApiKeysStore {
 }
 
 export const apiKeysStore = new ApiKeysStore();
+// === END FEATURE: apikeys ===

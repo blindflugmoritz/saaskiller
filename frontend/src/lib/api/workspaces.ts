@@ -1,3 +1,4 @@
+// === FEATURE: workspaces ===
 import { apiClient } from './client';
 
 // ---------------------------------------------------------------------------
@@ -84,3 +85,4 @@ export const membersApi = {
 		return apiClient.get(`/workspaces/invite/${token}/`);
 	},
 };
+// === END FEATURE: workspaces ===

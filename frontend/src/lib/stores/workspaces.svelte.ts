@@ -1,3 +1,4 @@
+// === FEATURE: workspaces ===
 import { workspacesApi, membersApi, type Workspace, type Membership, type MemberRole } from '$lib/api/workspaces';
 import { apiError } from './utils';
 
@@ -105,3 +106,4 @@ class WorkspaceStore {
 }
 
 export const workspaceStore = new WorkspaceStore();
+// === END FEATURE: workspaces ===

@@ -70,3 +70,4 @@ class BillingStore {
 }
 
 export const billingStore = new BillingStore();
+// === END FEATURE: stripe ===

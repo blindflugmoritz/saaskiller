@@ -1,3 +1,4 @@
+// === FEATURE: apikeys ===
 import { apiClient } from './client';
 
 export interface ApiKey {
@@ -26,3 +27,4 @@ export const apiKeysApi = {
 		return apiClient.delete(`/api-keys/${id}/`);
 	},
 };
+// === END FEATURE: apikeys ===
