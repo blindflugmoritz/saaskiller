@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SaasKiller setup.sh configuration spec",
+  "version": "1.0.0",
+  "description": "Machine-readable contract for pre-answering setup.sh questions via a config file. Another agent (or a human) writes a setup.config.ini against this spec; `./setup.sh <project> --config <file>` reads it, skips answered questions, and interactively prompts only for what is missing. See SETUP_CONFIG.md for the full guide.",
+  "usage": "./setup.sh <project-name> --config path/to/setup.config.ini",
+  "config_format": {
+    "type": "ini",
+    "notes": "Flat key=value pairs. Keys are case-insensitive. Section headers [like-this] are cosmetic and ignored by the parser. Whole-line comments start with # or ;. Inline comments are supported: a space followed by # or ; to end of line is stripped (so 'key = value  # note' works, while a '#' with no preceding space is kept as part of the value). Booleans accept: true/false, yes/no, y/n, 1/0. Any key omitted falls back to interactive prompt (default behaviour) unless --non-interactive is passed, in which case the documented default is used and required keys without a value abort."
+  },
+  "keys": [
+    {
+      "key": "project_name",
+      "section": "project",
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-z0-9_-]+$",
+      "prompt": "Project name (lowercase, no spaces, e.g. myapp)",
+      "default": null,
+      "note": "Usually passed as the first CLI arg (./setup.sh myapp). If given there, the config value is ignored. Lowercase letters, digits, hyphen, underscore only.",
+      "cli_arg": 1
+    },
+
+    { "key": "workspaces", "section": "features", "type": "boolean", "default": false, "prompt": "Multi-user workspaces & teams?", "var": "USE_WORKSPACES", "note": "Multi-tenant workspaces/teams. Strips backend/workspaces + workspace routes/stores if false." },
+    { "key": "cms",        "section": "features", "type": "boolean", "default": false, "prompt": "CMS — pages, blog, structured content (feincms3, server-rendered, crawlable)?", "var": "USE_CMS", "note": "feincms3 CMS with server-rendered Svelte islands. Strips backend/content + frontend/src/islands if false." },
+    { "key": "stripe",     "section": "features", "type": "boolean", "default": false, "prompt": "Billing & payments (Stripe)?", "var": "USE_STRIPE", "note": "Stripe billing. Strips backend/billing + billing routes/store/api if false." },
+    { "key": "tasks",      "section": "features", "type": "boolean", "default": false, "prompt": "Background tasks (django-q2)?", "var": "USE_TASKS", "note": "django-q2 async task queue + worker. Strips backend/tasks if false." },
+    { "key": "websockets", "section": "features", "type": "boolean", "default": false, "prompt": "Realtime / websockets (django-channels)?", "var": "USE_WEBSOCKETS", "note": "django-channels realtime. Strips backend/realtime + websocket util/notifications store if false." },
+    { "key": "s3",         "section": "features", "type": "boolean", "default": false, "prompt": "File uploads (nine.ch S3)?", "var": "USE_S3", "note": "File uploads via nine.ch S3 object storage. Strips backend/storage if false. NOTE: default backend is cloud S3 — reconfigure to local FS if local-first is required." },
+    { "key": "i18n",       "section": "features", "type": "boolean", "default": false, "prompt": "Multilingual (Paraglide i18n, de/en)?", "var": "USE_I18N", "note": "Paraglide i18n (de/en). When false, all m.*() calls must be avoided and layout uses plain render. Strips frontend/project.inlang + messages if false." },
+    { "key": "sentry",     "section": "features", "type": "boolean", "default": false, "prompt": "Error monitoring (Sentry)?", "var": "USE_SENTRY", "note": "Sentry error monitoring. Needs network; skip for LAN-only services." },
+    { "key": "apikeys",    "section": "features", "type": "boolean", "default": false, "prompt": "Programmatic API key management?", "var": "USE_APIKEYS", "note": "Programmatic API key management. Strips backend/apikeys + api-keys route/store/api if false." },
+    { "key": "github_oauth","section": "features","type": "boolean", "default": false, "prompt": "GitHub OAuth (second provider)?", "var": "USE_GITHUB_OAUTH", "note": "GitHub OAuth as a second login provider (magic-link is always present)." },
+    { "key": "mobile",     "section": "features", "type": "boolean", "default": false, "prompt": "Mobile app (Capacitor)?", "var": "USE_MOBILE", "note": "Capacitor mobile wrapper. Strips capacitor.config.ts + build-mobile.sh + cap:build script if false." },
+    { "key": "feedloop",   "section": "features", "type": "boolean", "default": false, "prompt": "Feedback widget (Feedloop)?", "var": "USE_FEEDLOOP", "note": "Feedloop feedback widget (screen recording, AI triage, GitHub Issues). Requires ~/coding/feedloop present locally to copy from." },
+
+    {
+      "key": "hosting",
+      "section": "hosting",
+      "type": "enum",
+      "values": ["deploio", "pythonanywhere", "none"],
+      "default": "deploio",
+      "prompt": "Hosting provider [1/2/3]",
+      "var": "HOSTING",
+      "note": "deploio = nine.ch Swiss PaaS (nctl CLI). pythonanywhere = PythonAnywhere. none = local only, no deploy files."
+    },
+    { "key": "staging",    "section": "hosting", "type": "boolean", "default": false, "prompt": "Staging environment?", "var": "USE_STAGING", "relevant_when": "hosting != none", "note": "Create a staging environment. Ignored when hosting=none." },
+    { "key": "production", "section": "hosting", "type": "boolean", "default": false, "prompt": "Production environment?", "var": "USE_PRODUCTION", "relevant_when": "hosting != none", "note": "Create a production environment. If neither staging nor production is chosen, hosting falls back to none." },
+
+    { "key": "github_org",  "section": "deploio", "type": "string", "default": "", "prompt": "GitHub org or user (e.g. blindflugstudios)", "var": "GITHUB_ORG", "relevant_when": "hosting == deploio", "note": "GitHub org/user that owns the repo — used to generate deploy-init.sh." },
+    { "key": "github_repo", "section": "deploio", "type": "string", "default": "", "prompt": "GitHub repo name", "var": "GITHUB_REPO", "relevant_when": "hosting == deploio", "note": "Repo name; defaults to project_name if left empty." },
+    { "key": "domain",      "section": "deploio", "type": "string", "default": "", "prompt": "Production domain (e.g. myapp.ch, leave empty to skip)", "var": "DOMAIN", "relevant_when": "hosting == deploio && production == true", "note": "Custom production domain. Empty = skip custom domain." },
+
+    { "key": "pa_username",      "section": "pythonanywhere", "type": "string", "default": "", "prompt": "PythonAnywhere username", "var": "PA_USERNAME", "relevant_when": "hosting == pythonanywhere", "note": "PythonAnywhere account username." },
+    { "key": "pa_webapp_domain", "section": "pythonanywhere", "type": "string", "default": "", "prompt": "Webapp domain (e.g. myapp.pythonanywhere.com)", "var": "PA_WEBAPP_DOMAIN", "relevant_when": "hosting == pythonanywhere", "note": "The webapp domain on PythonAnywhere." },
+    { "key": "pa_app_dir",       "section": "pythonanywhere", "type": "string", "default": "", "prompt": "App directory on PA server", "var": "PA_APP_DIR", "relevant_when": "hosting == pythonanywhere", "note": "Absolute path of the app dir on the PA server, e.g. /home/<user>/<project>." }
+  ]
+}

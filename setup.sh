@@ -15,11 +15,80 @@ echo "║         SaasKiller Setup             ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 
+# ── Argument parsing (positional project name + --config / --non-interactive) ──
+#
+# Usage: ./setup.sh <project-name> [--config FILE] [--non-interactive]
+# A config file pre-answers questions (see setup.spec.json / SETUP_CONFIG.md).
+# Without --non-interactive, any key the config omits is still asked interactively.
+
+CONFIG_FILE=""
+NON_INTERACTIVE=false
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --config)          CONFIG_FILE="${2:-}"; shift 2 ;;
+    --config=*)        CONFIG_FILE="${1#*=}"; shift ;;
+    --non-interactive) NON_INTERACTIVE=true; shift ;;
+    -h|--help)
+      echo "Usage: ./setup.sh <project-name> [--config FILE] [--non-interactive]"
+      echo "  --config FILE       Pre-answer questions from an ini file (see setup.spec.json)."
+      echo "  --non-interactive   Use documented defaults for anything the config omits; do not prompt."
+      exit 0 ;;
+    -*) echo "Unknown option: $1" >&2; exit 1 ;;
+    *)  POSITIONAL+=("$1"); shift ;;
+  esac
+done
+set -- "${POSITIONAL[@]}"
+
+# ── Config file loader (flat ini → CFG_<key> shell vars) ──────────────────────
+# Parses key=value lines (ignoring [sections], # / ; comments). Booleans are
+# normalised to true/false. Values become CFG_<lowercased_key>.
+declare -A CFG=()
+if [[ -n "$CONFIG_FILE" ]]; then
+  [[ -f "$CONFIG_FILE" ]] || { echo "Error: config file not found: $CONFIG_FILE" >&2; exit 1; }
+  echo "Loading config: $CONFIG_FILE"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%$'\r'}"                          # strip CR (Windows files)
+    [[ "$line" =~ ^[[:space:]]*[#\;] ]] && continue # comment
+    [[ "$line" =~ ^[[:space:]]*\[.*\][[:space:]]*$ ]] && continue # [section]
+    [[ "$line" =~ = ]] || continue                  # not a key=value
+    key="${line%%=*}"; val="${line#*=}"
+    # strip inline comment: whitespace followed by # or ; to end of line.
+    # (a leading space is required, so '#' inside a value like a URL fragment
+    #  or 'pass#word' is preserved — only ' # comment' style is removed.)
+    val="$(printf '%s' "$val" | sed -E 's/[[:space:]]+[#;].*$//')"
+    # trim whitespace
+    key="$(echo "$key" | tr '[:upper:]' '[:lower:]' | xargs)"
+    val="$(echo "$val" | xargs)"
+    [[ -z "$key" ]] && continue
+    CFG["$key"]="$val"
+  done < "$CONFIG_FILE"
+fi
+
+# cfg_get KEY -> echoes the raw config value, or empty if unset
+cfg_get() { echo "${CFG[$1]:-}"; }
+# cfg_has KEY -> true if the key was present in the config file
+cfg_has() { [[ -n "${CFG[$1]+x}" ]]; }
+# cfg_bool KEY -> normalises a config value to 'true'/'false' (empty if unset/invalid)
+cfg_bool() {
+  case "$(echo "${CFG[$1]:-}" | tr '[:upper:]' '[:lower:]')" in
+    true|yes|y|1)  echo true ;;
+    false|no|n|0)  echo false ;;
+    *)             echo "" ;;
+  esac
+}
+
 # ── Project name ──────────────────────────────────────────────────────────────
 
-# Accept project name as first argument (used by remote_setup.sh) or ask interactively
+# Precedence: CLI positional arg > config project_name > interactive prompt.
 if [[ -n "${1:-}" ]]; then
   PROJECT_NAME="$1"
+elif cfg_has project_name; then
+  PROJECT_NAME="$(cfg_get project_name)"
+  echo "  project_name = $PROJECT_NAME  (from config)"
+elif $NON_INTERACTIVE; then
+  echo "Error: project_name required (CLI arg or config) in --non-interactive mode." >&2
+  exit 1
 else
   read -p "Project name (lowercase, no spaces, e.g. myapp): " PROJECT_NAME
 fi
@@ -30,8 +99,22 @@ fi
 
 # ── Feature questions ──────────────────────────────────────────────────────────
 
+# ask KEY "Question?"  → returns 0 (yes) / 1 (no).
+# If the config set KEY, use it silently. Else in --non-interactive use the
+# default (false). Else prompt as before.
 ask() {
-  read -p "$1 [y/N]: " answer
+  local key="$1" question="$2" fromcfg
+  fromcfg="$(cfg_bool "$key")"
+  if [[ -n "$fromcfg" ]]; then
+    echo "  $key = $fromcfg  (from config)"
+    [[ "$fromcfg" == true ]]
+    return
+  fi
+  if $NON_INTERACTIVE; then
+    return 1   # documented default for all feature flags is false
+  fi
+  local answer
+  read -p "$question [y/N]: " answer
   [[ "$answer" =~ ^[Yy]$ ]]
 }
 
@@ -52,40 +135,69 @@ USE_TASKS=false
 USE_FEEDLOOP=false
 USE_CMS=false
 
-ask "Multi-user workspaces & teams?" && USE_WORKSPACES=true
-ask "CMS — pages, blog, structured content (feincms3, server-rendered, crawlable)?" && USE_CMS=true
-ask "Billing & payments (Stripe)?" && USE_STRIPE=true
-ask "Background tasks (django-q2)?" && USE_TASKS=true
-ask "Realtime / websockets (django-channels)?" && USE_WEBSOCKETS=true
-ask "File uploads (nine.ch S3)?" && USE_S3=true
-ask "Multilingual (Paraglide i18n, de/en)?" && USE_I18N=true
-ask "Error monitoring (Sentry)?" && USE_SENTRY=true
-ask "Programmatic API key management?" && USE_APIKEYS=true
-ask "GitHub OAuth (second provider)?" && USE_GITHUB_OAUTH=true
-ask "Mobile app (Capacitor)?" && USE_MOBILE=true
-ask "Feedback widget (Feedloop — screen recording, screenshots, AI triage, GitHub Issues)?" && USE_FEEDLOOP=true
+ask workspaces   "Multi-user workspaces & teams?" && USE_WORKSPACES=true
+ask cms          "CMS — pages, blog, structured content (feincms3, server-rendered, crawlable)?" && USE_CMS=true
+ask stripe       "Billing & payments (Stripe)?" && USE_STRIPE=true
+ask tasks        "Background tasks (django-q2)?" && USE_TASKS=true
+ask websockets   "Realtime / websockets (django-channels)?" && USE_WEBSOCKETS=true
+ask s3           "File uploads (nine.ch S3)?" && USE_S3=true
+ask i18n         "Multilingual (Paraglide i18n, de/en)?" && USE_I18N=true
+ask sentry       "Error monitoring (Sentry)?" && USE_SENTRY=true
+ask apikeys      "Programmatic API key management?" && USE_APIKEYS=true
+ask github_oauth "GitHub OAuth (second provider)?" && USE_GITHUB_OAUTH=true
+ask mobile       "Mobile app (Capacitor)?" && USE_MOBILE=true
+ask feedloop     "Feedback widget (Feedloop — screen recording, screenshots, AI triage, GitHub Issues)?" && USE_FEEDLOOP=true
 
 # ── Hosting questions ─────────────────────────────────────────────────────────
 
+# prompt_str KEY VAR "Prompt text" ["default"]  → sets VAR from config or prompt.
+# Config value (even empty string, if the key is present) wins; else prompt;
+# else in --non-interactive use the given default.
+prompt_str() {
+  local key="$1" var="$2" prompt="$3" default="${4:-}"
+  if cfg_has "$key"; then
+    printf -v "$var" '%s' "$(cfg_get "$key")"
+    echo "  $key = ${!var}  (from config)"
+    return
+  fi
+  if $NON_INTERACTIVE; then
+    printf -v "$var" '%s' "$default"
+    return
+  fi
+  local answer
+  read -p "$prompt: " answer
+  printf -v "$var" '%s' "$answer"
+}
+
 echo ""
 echo "Hosting setup:"
-echo ""
-echo "  [1] deplo.io  (nine.ch, Swiss PaaS, nctl CLI)"
-echo "  [2] PythonAnywhere"
-echo "  [3] None / local only"
-read -p "Hosting provider [1/2/3]: " _hosting_choice
-case "$_hosting_choice" in
-  2) HOSTING="pythonanywhere" ;;
-  3) HOSTING="none" ;;
-  *) HOSTING="deploio" ;;
-esac
+if cfg_has hosting; then
+  HOSTING="$(cfg_get hosting)"
+  case "$HOSTING" in
+    deploio|pythonanywhere|none) echo "  hosting = $HOSTING  (from config)" ;;
+    *) echo "Error: invalid hosting '$HOSTING' (deploio|pythonanywhere|none)" >&2; exit 1 ;;
+  esac
+elif $NON_INTERACTIVE; then
+  HOSTING="deploio"   # documented default
+else
+  echo ""
+  echo "  [1] deplo.io  (nine.ch, Swiss PaaS, nctl CLI)"
+  echo "  [2] PythonAnywhere"
+  echo "  [3] None / local only"
+  read -p "Hosting provider [1/2/3]: " _hosting_choice
+  case "$_hosting_choice" in
+    2) HOSTING="pythonanywhere" ;;
+    3) HOSTING="none" ;;
+    *) HOSTING="deploio" ;;
+  esac
+fi
 
 USE_STAGING=false
 USE_PRODUCTION=false
 
 if [[ "$HOSTING" != "none" ]]; then
-  ask "Staging environment?" && USE_STAGING=true
-  ask "Production environment?" && USE_PRODUCTION=true
+  ask staging    "Staging environment?" && USE_STAGING=true
+  ask production "Production environment?" && USE_PRODUCTION=true
   if ! $USE_STAGING && ! $USE_PRODUCTION; then
     echo "  ⚠  No environment selected — generating local-only setup."
     HOSTING="none"
@@ -98,10 +210,11 @@ GITHUB_REPO=""
 DOMAIN=""
 if [[ "$HOSTING" == "deploio" ]]; then
   echo ""
-  read -p "GitHub org or user (e.g. blindflugstudios): " GITHUB_ORG
-  read -p "GitHub repo name (e.g. $PROJECT_NAME): " GITHUB_REPO
+  prompt_str github_org  GITHUB_ORG  "GitHub org or user (e.g. blindflugstudios)"
+  prompt_str github_repo GITHUB_REPO "GitHub repo name (e.g. $PROJECT_NAME)"
+  [[ -z "$GITHUB_REPO" ]] && GITHUB_REPO="$PROJECT_NAME"
   if $USE_PRODUCTION; then
-    read -p "Production domain (e.g. myapp.ch, leave empty to skip): " DOMAIN
+    prompt_str domain DOMAIN "Production domain (e.g. myapp.ch, leave empty to skip)"
   fi
 fi
 
@@ -111,14 +224,14 @@ PA_WEBAPP_DOMAIN=""
 PA_APP_DIR=""
 if [[ "$HOSTING" == "pythonanywhere" ]]; then
   echo ""
-  read -p "PythonAnywhere username: " PA_USERNAME
-  read -p "Webapp domain (e.g. myapp.pythonanywhere.com): " PA_WEBAPP_DOMAIN
-  read -p "App directory on PA server (e.g. /home/$PA_USERNAME/$PROJECT_NAME): " PA_APP_DIR
+  prompt_str pa_username      PA_USERNAME      "PythonAnywhere username"
+  prompt_str pa_webapp_domain PA_WEBAPP_DOMAIN "Webapp domain (e.g. myapp.pythonanywhere.com)"
+  prompt_str pa_app_dir       PA_APP_DIR       "App directory on PA server (e.g. /home/$PA_USERNAME/$PROJECT_NAME)"
 fi
 
 echo ""
 echo "Setting up project: $PROJECT_NAME"
-echo "Features: workspaces=$USE_WORKSPACES stripe=$USE_STRIPE tasks=$USE_TASKS websockets=$USE_WEBSOCKETS s3=$USE_S3 i18n=$USE_I18N sentry=$USE_SENTRY apikeys=$USE_APIKEYS github_oauth=$USE_GITHUB_OAUTH mobile=$USE_MOBILE feedloop=$USE_FEEDLOOP"
+echo "Features: workspaces=$USE_WORKSPACES cms=$USE_CMS stripe=$USE_STRIPE tasks=$USE_TASKS websockets=$USE_WEBSOCKETS s3=$USE_S3 i18n=$USE_I18N sentry=$USE_SENTRY apikeys=$USE_APIKEYS github_oauth=$USE_GITHUB_OAUTH mobile=$USE_MOBILE feedloop=$USE_FEEDLOOP"
 echo "Hosting: $HOSTING  staging=$USE_STAGING  production=$USE_PRODUCTION"
 echo ""
 
@@ -150,6 +263,33 @@ sed -i '' "s/saaskiller.settings/$PROJECT_NAME.settings/g" backend/manage.py 2>/
 
 echo "  Done."
 
+# ── Assign local dev ports from the shared registry ───────────────────────────
+# Every local project gets a unique, collision-free (django, vite) pair from
+# ~/coding/ports.txt via portman.sh. Falls back to the template defaults if
+# portman isn't present, so setup still works on a machine without the registry.
+
+echo "Assigning local dev ports..."
+PORTMAN="$HOME/coding/portman.sh"
+DJANGO_PORT=8002
+VITE_PORT=5175
+if [ -x "$PORTMAN" ]; then
+  PAIR="$("$PORTMAN" ensure "$PROJECT_NAME" 2>/dev/null || true)"
+  if [ -n "$PAIR" ]; then
+    DJANGO_PORT="${PAIR%% *}"
+    VITE_PORT="${PAIR##* }"
+  fi
+  echo "  $PROJECT_NAME → django=$DJANGO_PORT vite=$VITE_PORT"
+else
+  echo "  portman.sh not found — keeping defaults django=$DJANGO_PORT vite=$VITE_PORT"
+fi
+
+# Rewrite the template default ports (8002/5175) in the generated .env examples
+# so backend CORS/FRONTEND_URL and the frontend API URL line up with the pair.
+for envf in backend/.env.example backend/.env frontend/.env.example frontend/.env; do
+  [ -f "$envf" ] || continue
+  sed -i '' "s/localhost:8002/localhost:$DJANGO_PORT/g; s/localhost:5175/localhost:$VITE_PORT/g" "$envf"
+done
+
 # ── Remove disabled features ───────────────────────────────────────────────────
 
 echo "Removing unused features..."
@@ -174,16 +314,24 @@ try:
 except Exception:
     sys.exit(0)
 original = text
-for comment in ['#', '//']:
+# Comment styles: line comments (# for py/yaml, // for js/ts) and HTML/Svelte
+# block comments (<!-- --> in .svelte / .html markup).
+for open_c, close_c in [('#', ''), ('//', ''), ('<!--', ' -->')]:
     pattern = (
-        re.escape(comment) + r' === FEATURE: ' + re.escape(feature) + r' ===' +
+        re.escape(open_c) + r' === FEATURE: ' + re.escape(feature) + r' ===' + re.escape(close_c) +
         r'.*?' +
-        re.escape(comment) + r' === END FEATURE: ' + re.escape(feature) + r' ===\n?'
+        re.escape(open_c) + r' === END FEATURE: ' + re.escape(feature) + r' ===' + re.escape(close_c) + r'\n?'
     )
     text = re.sub(pattern, '', text, flags=re.DOTALL)
 if text != original:
     open(path, 'w').write(text)
-" "$feature_name" "$file"
+    # If stripping emptied the file (a whole-file feature wrap), signal deletion
+    if text.strip() == '':
+        print('EMPTIED')
+" "$feature_name" "$file" | grep -q EMPTIED && {
+      rm -f "$file"
+      echo "    Removed emptied file $file"
+    }
   done < <(find . \
     -not -path './.git/*' \
     -not -path './*/venv/*' \
@@ -205,17 +353,53 @@ if text != original:
   done
 }
 
+# strip_pkg_scripts SCRIPT_NAME [SCRIPT_NAME...]
+# Removes npm scripts from frontend/package.json. package.json is JSON and can't
+# hold '// === FEATURE ===' markers, so strip_feature can't reach it — feature-
+# specific scripts (cms islands build, capacitor cap:build) must be deleted here.
+strip_pkg_scripts() {
+  local pkg="frontend/package.json"
+  [ -f "$pkg" ] || return 0
+  python3 -c "
+import json, sys
+pkg = sys.argv[1]
+names = sys.argv[2:]
+data = json.load(open(pkg))
+scripts = data.get('scripts', {})
+removed = [n for n in names if scripts.pop(n, None) is not None]
+if removed:
+    json.dump(data, open(pkg, 'w'), indent=2)
+    open(pkg, 'a').write('\n')
+    print('    Removed package.json scripts: ' + ', '.join(removed))
+" "$pkg" "$@"
+}
+
 $USE_STRIPE       || strip_feature stripe       backend/billing   frontend/src/routes/dashboard/billing
 $USE_WORKSPACES   || strip_feature workspaces   backend/workspaces frontend/src/routes/dashboard/workspaces frontend/src/routes/workspaces
 $USE_CMS          || strip_feature cms          backend/content   backend/static/islands   frontend/src/islands   frontend/vite.islands.config.ts
 $USE_TASKS        || strip_feature tasks        backend/tasks
 $USE_WEBSOCKETS   || strip_feature websockets   backend/realtime
 $USE_S3           || strip_feature s3           backend/storage
-$USE_I18N         || strip_feature i18n         frontend/project.inlang frontend/messages
+# i18n is dual-marked: keep the ParaglideJS-wrapped layout when enabled (strip the
+# plain 'no-i18n' fallback), or keep the plain fallback when disabled (strip i18n).
+if ! $USE_I18N; then
+  strip_feature i18n         frontend/project.inlang frontend/messages
+  # Stripping the i18n block removed the <ParaglideJS> wrapper AND the
+  # {@render children()} it contained. Restore a plain render in the layout.
+  LAYOUT=frontend/src/routes/+layout.svelte
+  if [ -f "$LAYOUT" ] && ! grep -q '@render children()' "$LAYOUT"; then
+    printf '\n{@render children()}\n' >> "$LAYOUT"
+    echo "    Restored plain {@render children()} in +layout.svelte (i18n disabled)"
+  fi
+fi
 $USE_SENTRY       || strip_feature sentry
 $USE_APIKEYS      || strip_feature apikeys      backend/apikeys   frontend/src/routes/dashboard/api-keys
 $USE_GITHUB_OAUTH || strip_feature github-oauth
 $USE_MOBILE       || strip_feature capacitor    frontend/capacitor.config.ts frontend/scripts/build-mobile.sh
+
+# package.json npm scripts that reference feature files (JSON can't hold markers)
+$USE_CMS          || strip_pkg_scripts build:islands dev:islands
+$USE_MOBILE       || strip_pkg_scripts cap:build
 
 if $USE_FEEDLOOP; then
   FEEDLOOP_DIR="${FEEDLOOP_PATH:-$HOME/coding/feedloop}"
@@ -988,6 +1172,48 @@ READMEEOF
 
 echo "  README.md generated."
 
+# ── Post-strip guard: catch orphaned feature code ─────────────────────────────
+# Verify feature stripping didn't leave dangling references. If node_modules is
+# present we run the real typecheck; otherwise a cheap static scan for imports of
+# modules that live only in stripped features. Warns loudly but does not abort —
+# the project is still usable and the author can fix before first `make dev`.
+
+echo "Verifying frontend after strip..."
+GUARD_WARN=0
+if [ -d frontend/node_modules ]; then
+  ( cd frontend && npm run check >/tmp/${PROJECT_NAME}-check.log 2>&1 ) \
+    && echo "  ✓ npm run check passed" \
+    || { echo "  ⚠ npm run check reported errors — see /tmp/${PROJECT_NAME}-check.log"; GUARD_WARN=1; }
+else
+  # Static scan: any import of a $lib module whose file no longer exists?
+  MISSING=$(cd frontend && grep -rhoE "from '(\\\$lib/[^']+)'" src --include=*.ts --include=*.svelte 2>/dev/null \
+    | sed -E "s/from '\\\$lib\/([^']+)'/\1/" | sort -u \
+    | while read -r mod; do
+        base="src/lib/$mod"
+        # skip if any resolution exists (.ts, .svelte, dir/index, or dir itself)
+        [ -e "$base.ts" ] || [ -e "$base.svelte" ] || [ -e "$base/index.ts" ] || [ -d "$base" ] || echo "$mod"
+      done)
+  if [ -n "$MISSING" ]; then
+    echo "  ⚠ Dangling imports of stripped modules:"
+    echo "$MISSING" | sed 's/^/      $lib\//'
+    echo "    (run 'cd frontend && npm install && npm run check' to confirm)"
+    GUARD_WARN=1
+  else
+    echo "  ✓ no dangling \$lib imports detected"
+  fi
+fi
+[ "$GUARD_WARN" = 1 ] && echo "  → Strip left some orphans. Fix before committing to your repo."
+
+# ── Regenerate the capabilities manifest for this fork ────────────────────────
+# After stripping, capabilities.json should describe THIS project's real feature
+# set, not the template's. The generator reads code + setup.sh, so it self-heals.
+if [ -f scripts/gen_capabilities.py ]; then
+  echo "Regenerating capabilities.json..."
+  python3 scripts/gen_capabilities.py >/dev/null 2>&1 \
+    && echo "  ✓ capabilities.json updated" \
+    || echo "  ⚠ could not regenerate capabilities.json (run it manually)"
+fi
+
 # ── Git setup ─────────────────────────────────────────────────────────────────
 
 echo "Setting up git..."
@@ -1004,8 +1230,8 @@ echo ""
 echo "Next steps:"
 echo "  1. Fill in backend/.env (SECRET_KEY, GOOGLE_CLIENT_ID, etc.)"
 echo "  2. make setup    ← creates venv, installs deps, runs migrations, npm install"
-echo "  3. make dev-be   (terminal 1 — Django on http://localhost:8002)"
-echo "  4. make dev-fe   (terminal 2 — Vite on http://localhost:5175)"
+echo "  3. make dev-be   (terminal 1 — Django on http://localhost:$DJANGO_PORT)"
+echo "  4. make dev-fe   (terminal 2 — Vite on http://localhost:$VITE_PORT)"
 echo ""
 if [[ "$HOSTING" == "deploio" ]]; then
   echo "  ── Deploy Setup (run once) ───────────────────────────────"
