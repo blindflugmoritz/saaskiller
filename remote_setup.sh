@@ -3,15 +3,40 @@
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/blindflugmoritz/saaskiller/main/remote_setup.sh | bash -s <projektname>
-#   curl -fsSL https://raw.githubusercontent.com/blindflugmoritz/saaskiller/main/remote_setup.sh | bash -s <projektname> --public
+#   curl -fsSL .../remote_setup.sh | bash -s <projektname> --public
+#   curl -fsSL .../remote_setup.sh | bash -s <projektname> --config /pfad/setup.config.ini
+#   ./remote_setup.sh <projektname> [--public] [--config FILE] [--non-interactive]
+#
+# --config and --non-interactive are passed through to setup.sh. The config file
+# is resolved to an absolute path before cloning, then copied into the project.
 #
 set -euo pipefail
 
 TEMPLATE_REPO="https://github.com/blindflugmoritz/saaskiller.git"
-PROJECT_NAME="${1:-}"
+
+# ── Argument parsing ──────────────────────────────────────────────────────────
+# Usage: remote_setup.sh <project-name> [--public] [--config FILE] [--non-interactive]
+# --config/--non-interactive are passed straight through to setup.sh.
+PROJECT_NAME=""
 VISIBILITY="--private"
-if [[ "${2:-}" == "--public" ]]; then
-  VISIBILITY="--public"
+CONFIG_FILE=""
+NON_INTERACTIVE=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --public)          VISIBILITY="--public"; shift ;;
+    --private)         VISIBILITY="--private"; shift ;;
+    --config)          CONFIG_FILE="${2:-}"; shift 2 ;;
+    --config=*)        CONFIG_FILE="${1#*=}"; shift ;;
+    --non-interactive) NON_INTERACTIVE=true; shift ;;
+    -*)                echo "Unknown option: $1" >&2; exit 1 ;;
+    *)                 [[ -z "$PROJECT_NAME" ]] && PROJECT_NAME="$1"; shift ;;
+  esac
+done
+
+# Resolve the config path to absolute NOW, before we cd into the clone.
+if [[ -n "$CONFIG_FILE" ]]; then
+  [[ -f "$CONFIG_FILE" ]] || { echo "Error: config file not found: $CONFIG_FILE" >&2; exit 1; }
+  CONFIG_FILE="$(cd "$(dirname "$CONFIG_FILE")" && pwd)/$(basename "$CONFIG_FILE")"
 fi
 
 # ── Colors ────────────────────────────────────────────────────────────────────
@@ -91,4 +116,14 @@ echo ""
 # ── Run setup.sh ──────────────────────────────────────────────────────────────
 info "Running setup.sh..."
 echo ""
-bash setup.sh "$PROJECT_NAME"
+
+SETUP_ARGS=("$PROJECT_NAME")
+if [[ -n "$CONFIG_FILE" ]]; then
+  # Copy the config into the project so setup.sh can read it by a local path.
+  cp "$CONFIG_FILE" ./setup.config.ini
+  ok "Config copied: $CONFIG_FILE → setup.config.ini"
+  SETUP_ARGS+=(--config setup.config.ini)
+fi
+$NON_INTERACTIVE && SETUP_ARGS+=(--non-interactive)
+
+bash setup.sh "${SETUP_ARGS[@]}"

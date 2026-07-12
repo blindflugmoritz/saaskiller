@@ -4,7 +4,17 @@ This file provides guidance to Claude Code when working in this repository.
 
 ## What this repo is
 
-**SaasKiller** is a forkable SaaS template — Django 5 + SvelteKit. The repo root IS the template. When starting a new project, fork this repo and run `./setup.sh`. It asks for a project name, which optional features to include, and which hosting provider to use (deplo.io or PythonAnywhere), then generates the right deploy scripts and an initial git commit.
+**SaasKiller** is a forkable SaaS template — Django 5 + SvelteKit. The repo root IS the template. When starting a new project, run `remote_setup.sh` — it clones the template, creates a private GitHub repo, and runs the interactive setup:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/blindflugmoritz/saaskiller/main/remote_setup.sh -o remote_setup.sh
+chmod +x remote_setup.sh
+./remote_setup.sh my-project
+```
+
+`setup.sh` then asks which optional features to include and which hosting provider to use (deplo.io or PythonAnywhere), strips everything else, renames all references, and pushes an initial commit.
+
+**Pre-answering setup (config file):** the ~20 setup questions can be answered up front with a config file — `./setup.sh my-project --config setup.config.ini`. Answers in the file are used automatically; anything omitted is still prompted (or, with `--non-interactive`, uses documented defaults). The machine-readable contract is `setup.spec.json`; a commented template is `setup.config.example.ini`; the full guide is `SETUP_CONFIG.md`. When pre-defining a project in another repo, write a `setup.config.ini` against `setup.spec.json` so the human never retypes the feature/hosting answers.
 
 Do not build product-specific features here. Keep everything generic and replaceable.
 

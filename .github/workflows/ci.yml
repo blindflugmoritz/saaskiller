@@ -24,6 +24,17 @@ jobs:
       - name: Ruff check
         run: cd backend && ruff check .
 
+  capabilities-drift:
+    name: capabilities.json up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check capabilities.json matches code
+        run: python3 scripts/gen_capabilities.py --check
+
   typecheck-frontend:
     name: Typecheck frontend (svelte-check)
     runs-on: ubuntu-latest

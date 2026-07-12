@@ -1,0 +1,271 @@
+{
+  "_generated_by": "scripts/gen_capabilities.py",
+  "_note": "Machine-readable index of optional features. Regenerate with `python3 scripts/gen_capabilities.py`. Do not hand-edit. Config keys and valid values live in setup.spec.json; the API shape is at /api/schema/ (OpenAPI). See AGENTS.md.",
+  "always_included": {
+    "backend_apps": [
+      "users"
+    ],
+    "auth": "Magic-link + JWT (SimpleJWT); OAuth providers optional.",
+    "api_docs": "/api/schema/ (OpenAPI), /api/docs/ (Swagger UI)"
+  },
+  "features": {
+    "apikeys": {
+      "description": "Programmatic API key management.",
+      "present": true,
+      "config_key": "apikeys",
+      "backend_apps": [
+        "apikeys"
+      ],
+      "models": [
+        "apikeys.ApiKey"
+      ],
+      "api_endpoints": [
+        "api/keys/"
+      ],
+      "frontend_routes": [
+        "frontend/src/routes/dashboard/api-keys"
+      ],
+      "frontend_files": [],
+      "pip_dependencies": [],
+      "env_vars": [],
+      "removed_paths_when_disabled": [
+        "backend/apikeys",
+        "frontend/src/routes/dashboard/api-keys"
+      ]
+    },
+    "capacitor": {
+      "description": "Capacitor mobile-app wrapper.",
+      "present": true,
+      "config_key": "mobile",
+      "backend_apps": [],
+      "models": [],
+      "api_endpoints": [],
+      "frontend_routes": [],
+      "frontend_files": [
+        "frontend/capacitor.config.ts",
+        "frontend/scripts/build-mobile.sh"
+      ],
+      "pip_dependencies": [],
+      "env_vars": [],
+      "removed_paths_when_disabled": [
+        "frontend/capacitor.config.ts",
+        "frontend/scripts/build-mobile.sh"
+      ]
+    },
+    "cms": {
+      "description": "feincms3 CMS — pages/blog, server-rendered Svelte islands, crawlable.",
+      "present": true,
+      "config_key": "cms",
+      "backend_apps": [
+        "content"
+      ],
+      "models": [
+        "content.Page",
+        "content.PageHTML",
+        "content.PageImage",
+        "content.PageRichText"
+      ],
+      "api_endpoints": [
+        "api/cms/"
+      ],
+      "frontend_routes": [],
+      "frontend_files": [
+        "frontend/src/islands",
+        "frontend/vite.islands.config.ts"
+      ],
+      "pip_dependencies": [
+        "feincms3==5.6.0",
+        "django-content-editor==7.1.0",
+        "html-sanitizer==2.4.4",
+        "django-imagefield==0.15.0",
+        "Pillow==11.2.1"
+      ],
+      "env_vars": [],
+      "removed_paths_when_disabled": [
+        "backend/content",
+        "backend/static/islands",
+        "frontend/src/islands",
+        "frontend/vite.islands.config.ts"
+      ]
+    },
+    "github-oauth": {
+      "description": "GitHub OAuth as a second login provider.",
+      "present": true,
+      "config_key": "github_oauth",
+      "backend_apps": [],
+      "models": [],
+      "api_endpoints": [],
+      "frontend_routes": [],
+      "frontend_files": [],
+      "pip_dependencies": [],
+      "env_vars": [
+        "GITHUB_CLIENT_ID",
+        "GITHUB_CLIENT_SECRET"
+      ],
+      "removed_paths_when_disabled": []
+    },
+    "i18n": {
+      "description": "Paraglide multilingual UI (de/en).",
+      "present": true,
+      "config_key": "i18n",
+      "backend_apps": [],
+      "models": [],
+      "api_endpoints": [],
+      "frontend_routes": [],
+      "frontend_files": [
+        "frontend/messages",
+        "frontend/project.inlang"
+      ],
+      "pip_dependencies": [],
+      "env_vars": [],
+      "removed_paths_when_disabled": [
+        "frontend/project.inlang",
+        "frontend/messages"
+      ]
+    },
+    "s3": {
+      "description": "File uploads to nine.ch S3 object storage.",
+      "present": true,
+      "config_key": "s3",
+      "backend_apps": [],
+      "models": [],
+      "api_endpoints": [],
+      "frontend_routes": [],
+      "frontend_files": [],
+      "pip_dependencies": [
+        "boto3==1.43.21",
+        "botocore==1.43.21",
+        "s3transfer==0.18.0",
+        "django-storages==1.14.5"
+      ],
+      "env_vars": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_STORAGE_BUCKET_NAME",
+        "AWS_S3_ENDPOINT_URL"
+      ],
+      "removed_paths_when_disabled": [
+        "backend/storage"
+      ]
+    },
+    "sentry": {
+      "description": "Error monitoring via Sentry.",
+      "present": true,
+      "config_key": "sentry",
+      "backend_apps": [],
+      "models": [],
+      "api_endpoints": [],
+      "frontend_routes": [],
+      "frontend_files": [],
+      "pip_dependencies": [
+        "sentry-sdk[django]==2.22.0"
+      ],
+      "env_vars": [
+        "SENTRY_DSN"
+      ],
+      "removed_paths_when_disabled": []
+    },
+    "stripe": {
+      "description": "Billing & payments via Stripe.",
+      "present": true,
+      "config_key": "stripe",
+      "backend_apps": [
+        "billing"
+      ],
+      "models": [
+        "billing.Plan",
+        "billing.StripeEvent",
+        "billing.Subscription"
+      ],
+      "api_endpoints": [
+        "api/billing/"
+      ],
+      "frontend_routes": [
+        "frontend/src/routes/dashboard/billing"
+      ],
+      "frontend_files": [],
+      "pip_dependencies": [
+        "stripe==12.0.0"
+      ],
+      "env_vars": [
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_PRICE_ID_MONTHLY",
+        "STRIPE_PRICE_ID_YEARLY"
+      ],
+      "removed_paths_when_disabled": [
+        "backend/billing",
+        "frontend/src/routes/dashboard/billing"
+      ]
+    },
+    "tasks": {
+      "description": "Background task queue and worker (django-q2).",
+      "present": true,
+      "config_key": "tasks",
+      "backend_apps": [
+        "tasks"
+      ],
+      "models": [],
+      "api_endpoints": [],
+      "frontend_routes": [],
+      "frontend_files": [],
+      "pip_dependencies": [
+        "django-q2==1.10.0"
+      ],
+      "env_vars": [],
+      "removed_paths_when_disabled": [
+        "backend/tasks"
+      ]
+    },
+    "websockets": {
+      "description": "Realtime via django-channels.",
+      "present": true,
+      "config_key": "websockets",
+      "backend_apps": [
+        "realtime"
+      ],
+      "models": [],
+      "api_endpoints": [],
+      "frontend_routes": [],
+      "frontend_files": [],
+      "pip_dependencies": [
+        "channels==4.1.0",
+        "channels-redis==4.2.1"
+      ],
+      "env_vars": [
+        "REDIS_URL"
+      ],
+      "removed_paths_when_disabled": [
+        "backend/realtime"
+      ]
+    },
+    "workspaces": {
+      "description": "Multi-tenant workspaces, memberships and invitations.",
+      "present": true,
+      "config_key": "workspaces",
+      "backend_apps": [
+        "workspaces"
+      ],
+      "models": [
+        "workspaces.Invitation",
+        "workspaces.Membership",
+        "workspaces.Workspace"
+      ],
+      "api_endpoints": [
+        "api/workspaces/"
+      ],
+      "frontend_routes": [
+        "frontend/src/routes/dashboard/workspaces",
+        "frontend/src/routes/workspaces"
+      ],
+      "frontend_files": [],
+      "pip_dependencies": [],
+      "env_vars": [],
+      "removed_paths_when_disabled": [
+        "backend/workspaces",
+        "frontend/src/routes/dashboard/workspaces",
+        "frontend/src/routes/workspaces"
+      ]
+    }
+  }
+}
