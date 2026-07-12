@@ -1,20 +1,153 @@
 @import 'tailwindcss';
 
-@theme {
-	--color-border: hsl(220 13% 91%);
-	--color-input: hsl(220 13% 91%);
-	--color-ring: hsl(221 83% 53%);
-	--color-background: hsl(0 0% 100%);
-	--color-foreground: hsl(222 47% 11%);
-	--color-primary: hsl(221 83% 53%);
-	--color-primary-foreground: hsl(0 0% 100%);
-	--color-secondary: hsl(210 40% 96%);
-	--color-secondary-foreground: hsl(222 47% 11%);
-	--color-muted: hsl(210 40% 96%);
-	--color-muted-foreground: hsl(215 16% 47%);
-	--color-accent: hsl(210 40% 96%);
-	--color-accent-foreground: hsl(222 47% 11%);
-	--color-destructive: hsl(0 84% 60%);
-	--color-destructive-foreground: hsl(0 0% 100%);
-	--radius: 0.5rem;
+/* ── Swiss / poster design system ────────────────────────────────────────────
+   Palette + type derived from the moritzzumbuehl site. Paper/ink ground, the
+   three primary colours (red/blue/yellow) as accents, Helvetica display, mono
+   for labels, and — the signature move — NO rounded corners (radius: 0).
+
+   One source of truth: the palette is defined once as bare CSS variables on
+   :root (this is also the schema shadcn-svelte components read), then mapped
+   into Tailwind's @theme so both the existing `--color-*` utilities used
+   across the routes AND shadcn-svelte components resolve to the same values.
+   Change a value here → it changes everywhere. */
+
+:root {
+	/* raw palette */
+	--paper: #ffffff;
+	--ink: #0a0a0a;
+	--red: #e1251b;
+	--blue: #0b5bd3;
+	--yellow: #ffcc00;
+	--green: #16a34a;
+
+	/* shadcn-svelte token schema (components read these names) */
+	--background: var(--paper);
+	--foreground: var(--ink);
+	--card: var(--paper);
+	--card-foreground: var(--ink);
+	--popover: var(--paper);
+	--popover-foreground: var(--ink);
+	--primary: var(--ink); /* ink, not Bootstrap blue */
+	--primary-foreground: var(--paper);
+	--secondary: var(--paper);
+	--secondary-foreground: var(--ink);
+	--muted: var(--paper);
+	--muted-foreground: color-mix(in srgb, var(--ink) 60%, var(--paper));
+	--accent: var(--blue);
+	--accent-foreground: var(--paper);
+	--destructive: var(--red);
+	--destructive-foreground: #ffffff;
+	--border: var(--ink); /* hard edges */
+	--input: var(--ink);
+	--ring: var(--blue); /* focus ring */
+	--radius: 0px; /* the Swiss move: no rounding */
+}
+
+/* Map the raw tokens onto Tailwind utilities. `inline` lets @theme reference
+   the :root vars above (Tailwind 4). This keeps every existing
+   `bg-[--color-primary]` etc. in the routes working, now with Swiss values. */
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+
+	/* Swiss accent colours available as utilities (bg-red / text-yellow …) */
+	--color-red: var(--red);
+	--color-blue: var(--blue);
+	--color-yellow: var(--yellow);
+	--color-green: var(--green);
+
+	/* typography */
+	--font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+	--font-display: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+	--font-mono: ui-monospace, 'SFMono-Regular', Menlo, 'Courier New', monospace;
+}
+
+/* Base page: paper ground, ink text, Helvetica, no rounding anywhere by default. */
+@layer base {
+	body {
+		background: var(--background);
+		color: var(--foreground);
+		font-family: var(--font-sans);
+		font-size: 18px;
+		line-height: 1.55;
+		-webkit-font-smoothing: antialiased;
+	}
+	a {
+		text-underline-offset: 2px;
+	}
+	*:focus-visible {
+		outline: 3px solid var(--ring);
+		outline-offset: 2px;
+	}
+}
+
+/* ── Swiss signature utilities ───────────────────────────────────────────────
+   Small classes for the three brand elements that make the poster look, used
+   on top of Tailwind. Names mirror the moritzzumbuehl cms.css. */
+@layer components {
+	.eyebrow {
+		font-family: var(--font-mono);
+		font-size: 13px;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--ink);
+		display: inline-block;
+		border-bottom: 2px solid var(--ink);
+		padding-bottom: 3px;
+	}
+	.title {
+		font-family: var(--font-display);
+		font-weight: 900;
+		line-height: 1.02;
+		letter-spacing: -0.02em;
+		text-wrap: balance;
+	}
+	.rule {
+		height: 6px;
+		background: var(--ink);
+		border: 0;
+	}
+	.rule-thin {
+		height: 2px;
+		background: var(--ink);
+		border: 0;
+	}
+	.mk {
+		display: inline-block;
+		width: 18px;
+		height: 18px;
+		flex: 0 0 auto;
+	}
+	.mk-sq {
+		background: var(--red);
+	}
+	.mk-ci {
+		background: var(--blue);
+		border-radius: 50%;
+	}
+	.mk-tr {
+		width: 0;
+		height: 0;
+		background: transparent;
+		border-left: 10px solid transparent;
+		border-right: 10px solid transparent;
+		border-bottom: 18px solid var(--yellow);
+	}
 }
