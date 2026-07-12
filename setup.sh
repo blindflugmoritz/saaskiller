@@ -237,9 +237,34 @@ echo ""
 
 # ── Rename saaskiller → project name ──────────────────────────────────────────
 
-echo "Renaming saaskiller → $PROJECT_NAME..."
+# The literal "saaskiller" plays two roles in the template:
+#   1. The Django Python package name — must be a valid Python identifier, so
+#      hyphens are NOT allowed. Referenced as `saaskiller.settings` etc. and as
+#      the dir backend/saaskiller/.
+#   2. Branding / repo / URL / value strings — hyphens are fine here.
+# A project name may contain hyphens (e.g. modell-cockpit), so we use a
+# separate PKG_NAME (hyphens → underscores) for role 1 and PROJECT_NAME for
+# role 2. Otherwise `import modell-cockpit.settings` is a SyntaxError.
+PKG_NAME="${PROJECT_NAME//-/_}"
+if [[ "$PKG_NAME" != "$PROJECT_NAME" ]]; then
+  echo "Renaming saaskiller → $PROJECT_NAME (python package: $PKG_NAME)..."
+else
+  echo "Renaming saaskiller → $PROJECT_NAME..."
+fi
 
-# Files to rename (code, configs, etc.)
+# Pass 1 — Python module references → PKG_NAME. Match ONLY the real submodule
+#          names (settings/urls/wsgi/asgi/views/settings_test), so we don't
+#          mangle unrelated dotted strings like an email domain
+#          (e2e-test@saaskiller.local) or a URL (saaskiller.app).
+#          Do this BEFORE the bare replace so module paths get underscores.
+find . -not -path './.git/*' -not -path './*/venv/*' -not -path './*/node_modules/*' \
+  -type f \( -name "*.py" -o -name "*.ini" -o -name "Procfile" -o -name "*.cfg" \) \
+  | xargs grep -lE "saaskiller\.(settings|urls|wsgi|asgi|views)" 2>/dev/null \
+  | while read f; do
+      sed -i '' -E "s/saaskiller\.(settings_test|settings|urls|wsgi|asgi|views)/$PKG_NAME.\1/g" "$f"
+    done
+
+# Pass 2 — everything else (branding, repo, URLs, values) → PROJECT_NAME.
 find . -not -path './.git/*' -not -path './*/venv/*' -not -path './*/node_modules/*' \
   -type f \( -name "*.py" -o -name "*.ts" -o -name "*.svelte" -o -name "*.js" -o -name "*.json" \
            -o -name "*.yml" -o -name "*.yaml" -o -name "*.sh" -o -name "*.md" -o -name "*.cfg" \
@@ -249,13 +274,13 @@ find . -not -path './.git/*' -not -path './*/venv/*' -not -path './*/node_module
       sed -i '' "s/saaskiller/$PROJECT_NAME/g" "$f"
     done
 
-# Rename the Django project directory
+# Rename the Django project directory to the Python package name.
 if [ -d "backend/saaskiller" ]; then
-  mv "backend/saaskiller" "backend/$PROJECT_NAME"
+  mv "backend/saaskiller" "backend/$PKG_NAME"
 fi
 
-# Rename manage.py DJANGO_SETTINGS_MODULE
-sed -i '' "s/saaskiller.settings/$PROJECT_NAME.settings/g" backend/manage.py 2>/dev/null || true
+# manage.py DJANGO_SETTINGS_MODULE (belt-and-suspenders; pass 1 already did it)
+sed -i '' "s/saaskiller\.settings/$PKG_NAME.settings/g" backend/manage.py 2>/dev/null || true
 
 # Rename db_table prefixes sk_ → first 2 chars of project name
 # (optional aesthetic rename — comment out if you prefer sk_)
@@ -995,7 +1020,7 @@ URLs lokal:
 ## Testing
 
 ### Backend (pytest-django)
-- Config: \`backend/pytest.ini\` — \`DJANGO_SETTINGS_MODULE = $PROJECT_NAME.settings\`
+- Config: \`backend/pytest.ini\` — \`DJANGO_SETTINGS_MODULE = $PKG_NAME.settings\`
 - Tests: \`backend/tests/test_<app>.py\` — eine Datei pro App
 - Fixtures:
   \`\`\`python
