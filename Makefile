@@ -1,4 +1,17 @@
-.PHONY: setup dev-be dev-fe dev-worker dev-islands build-islands migrate makemigrations createsuperuser shell test-be test-fe test-e2e test-all check test-smoke
+.PHONY: setup dev-be dev-fe dev-worker dev-islands build-islands migrate makemigrations createsuperuser shell test-be test-fe test-e2e test-all check test-smoke ports
+
+# ── Ports ─────────────────────────────────────────────────────────────────────
+# Ports come from the shared registry (~/coding/ports.txt) via portman.sh, so
+# every local project has a unique, collision-free pair. If portman is missing,
+# fall back to the template defaults so the repo still runs standalone.
+PROJECT     := $(notdir $(CURDIR))
+PORTMAN     := $(HOME)/coding/portman.sh
+DJANGO_PORT := $(shell [ -x "$(PORTMAN)" ] && "$(PORTMAN)" get "$(PROJECT)" be 2>/dev/null || echo 8002)
+VITE_PORT   := $(shell [ -x "$(PORTMAN)" ] && "$(PORTMAN)" get "$(PROJECT)" fe 2>/dev/null || echo 5175)
+
+ports:
+	@[ -x "$(PORTMAN)" ] && "$(PORTMAN)" list || echo "portman.sh not found; defaults: django=8002 vite=5175"
+	@echo "$(PROJECT): django=$(DJANGO_PORT) vite=$(VITE_PORT)"
 
 # ── Backend ───────────────────────────────────────────────────────────────────
 
@@ -16,7 +29,8 @@ setup:
 	@echo "Then run: make dev-be (terminal 1) + make dev-fe (terminal 2)"
 
 dev-be:
-	cd backend && source venv/bin/activate && python manage.py runserver 8002
+	@echo "→ Django on http://localhost:$(DJANGO_PORT)"
+	cd backend && source venv/bin/activate && python manage.py runserver $(DJANGO_PORT)
 
 # === FEATURE: tasks ===
 dev-worker:
@@ -38,7 +52,8 @@ shell:
 # ── Frontend ──────────────────────────────────────────────────────────────────
 
 dev-fe:
-	cd frontend && npm run dev -- --port 5175
+	@echo "→ Vite on http://localhost:$(VITE_PORT)"
+	cd frontend && npm run dev -- --port $(VITE_PORT)
 
 # === FEATURE: cms ===
 # Build Svelte islands for CMS pages (run once before collectstatic; output → backend/static/islands/)
