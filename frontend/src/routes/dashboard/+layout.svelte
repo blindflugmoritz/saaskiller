@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { authStore } from '$lib/stores/auth.svelte';
-	import { Button } from '$lib/components/ui/button';
+	import { Sidebar, type SidebarNavItem } from '$lib/components/ui/sidebar';
 
 	let { children } = $props();
 
@@ -14,12 +14,12 @@
 		}
 	});
 
-	const nav = [
-		{ href: '/dashboard', label: 'Overview' },
-		{ href: '/dashboard/settings', label: 'Settings' }
+	const nav: SidebarNavItem[] = [
+		{ href: '/dashboard', label: 'Overview', marker: 'sq' },
+		{ href: '/dashboard/settings', label: 'Settings', marker: 'ci' }
 	];
 
-	async function handleLogout() {
+	function handleLogout() {
 		authStore.logout();
 		goto('/auth/login');
 	}
@@ -28,35 +28,28 @@
 {#if authStore.authLoading}
 	<!-- minimal loading state while auth resolves -->
 {:else if authStore.isAuthenticated}
-	<div class="min-h-screen bg-background text-foreground">
-		<!-- Swiss dashboard header: black bar + yellow rule, brand, nav, logout. -->
-		<header class="border-b-[6px] border-yellow bg-primary text-primary-foreground">
-			<div class="mx-auto flex max-w-5xl items-baseline justify-between gap-4 px-6 py-4">
-				<a href="/dashboard" class="font-display text-xl font-black uppercase tracking-wider">SaasKiller</a>
-				<button
-					onclick={handleLogout}
-					class="font-mono text-xs uppercase tracking-wider text-primary-foreground hover:text-yellow"
-				>
-					Log out
-				</button>
-			</div>
-			<nav class="mx-auto flex max-w-5xl gap-6 px-6 pb-3">
-				{#each nav as item (item.href)}
-					<a
-						href={item.href}
-						class="border-b-[3px] pb-1 font-mono text-xs uppercase tracking-wider transition-colors {page
-							.url.pathname === item.href
-							? 'border-yellow text-yellow'
-							: 'border-transparent text-primary-foreground hover:text-yellow'}"
+	<!-- Swiss dashboard shell: fixed sidebar (nav + user footer) beside content. -->
+	<div class="flex min-h-screen bg-background text-foreground">
+		<Sidebar items={nav} pathname={page.url.pathname}>
+			{#snippet footer()}
+				<div class="flex flex-col gap-2">
+					<span class="truncate font-mono text-[11px] uppercase tracking-wider text-primary-foreground">
+						{authStore.currentUser?.email ?? ''}
+					</span>
+					<button
+						onclick={handleLogout}
+						class="text-left font-mono text-xs uppercase tracking-wider text-primary-foreground hover:text-yellow"
 					>
-						{item.label}
-					</a>
-				{/each}
-			</nav>
-		</header>
+						Log out →
+					</button>
+				</div>
+			{/snippet}
+		</Sidebar>
 
-		<main class="mx-auto max-w-5xl px-6 py-12">
-			{@render children()}
+		<main class="min-w-0 flex-1 px-6 py-12 md:px-10">
+			<div class="mx-auto max-w-4xl">
+				{@render children()}
+			</div>
 		</main>
 	</div>
 {/if}

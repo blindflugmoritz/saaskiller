@@ -160,6 +160,20 @@ E2E_BASE_URL=https://myapp-staging-frontend.deploio.app npm run test:e2e:smoke  
 6. **Tailwind 4** — uses `@tailwindcss/vite` plugin. No `tailwind.config.js`. Import: `@import 'tailwindcss'` in `app.css`.
 7. **i18n conditional** — if Paraglide is enabled: all user-facing text through `m.*()`. If not enabled: hardcoded strings are fine.
 8. **Pure functions first** — business logic as pure functions before wiring to components or stores.
+9. **Swiss design system** — the default look is Swiss/poster (paper/ink + red/blue/yellow, Helvetica, mono labels, **no rounded corners**). Build UI with the shadcn-svelte components in `lib/components/ui/` + the Swiss utilities in `app.css` (`.eyebrow`, `.title`, `.rule`, `.mk-sq/ci/tr`). Never hand-roll Tailwind with `rounded-*`. Colour comes from theme tokens (`bg-primary`, `text-muted-foreground`, `bg-red/blue/yellow`) — change a token in `app.css`, restyle everywhere. Light-only by design.
+
+## UI components (shadcn-svelte)
+
+shadcn-svelte is initialised (`frontend/components.json`). Components are **copied into the repo** at `frontend/src/lib/components/ui/` — they are yours to edit, not an npm dependency. The `cn` helper lives at `$lib/utils/cn`.
+
+Present: `button` (variants: default/secondary/outline/destructive/ghost/link), `input`, `label`, `badge`, `card`, `textarea`, `select` (native), `sidebar`. Post-login screens use the `sidebar` shell (`dashboard/+layout.svelte`).
+
+**Adding more components** — copy from the registry and restyle to the Swiss tokens (sharp corners, mono labels):
+- Blocks (full layouts — sidebar, login, dashboard): https://shadcn-svelte.com/blocks
+- Component docs & source: https://www.shadcn-svelte.com/docs/components
+- Community extras (extra components beyond the core set): https://www.shadcn-svelte-extras.com/components
+
+When you pull in a block/component, keep the Swiss conventions: `--radius: 0`, `font-mono` uppercase labels, hard `border-2` borders, the three accent colours. Verify with `npm run check` and a screenshot before committing.
 
 ## Auth flow (Magic link → JWT)
 

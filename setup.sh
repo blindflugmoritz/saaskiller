@@ -1120,6 +1120,18 @@ fi)
 5. **Test-first** — Test schreiben, rot sehen, dann Code.
 6. **Tailwind 4** — via \`@tailwindcss/vite\`. Kein \`tailwind.config.js\`.
 7. **Pure functions first** — Business Logic als pure functions, dann in Stores/Komponenten einbauen.
+8. **Swiss design system** — Default-Look ist Swiss/Poster (Papier/Tinte + Rot/Blau/Gelb, Helvetica, Mono-Labels, **keine runden Ecken**). UI mit den shadcn-svelte-Komponenten in \`lib/components/ui/\` + Swiss-Utilities in \`app.css\` (\`.eyebrow\`, \`.title\`, \`.rule\`, \`.mk-sq/ci/tr\`) bauen. Kein hand-gerolltes Tailwind mit \`rounded-*\`. Farbe kommt aus Theme-Tokens — einen Token in \`app.css\` ändern = überall neu gestylt.
+
+## UI-Komponenten (shadcn-svelte)
+
+shadcn-svelte ist initialisiert (\`frontend/components.json\`). Komponenten sind **ins Repo kopiert** unter \`frontend/src/lib/components/ui/\` — sie gehören dir, kein npm-Paket. Der \`cn\`-Helper liegt in \`\$lib/utils/cn\`.
+
+Vorhanden: \`button\`, \`input\`, \`label\`, \`badge\`, \`card\`, \`textarea\`, \`select\`, \`sidebar\`. Post-Login-Screens nutzen die \`sidebar\`-Shell (\`dashboard/+layout.svelte\`).
+
+**Weitere Komponenten** — aus der Registry kopieren und auf die Swiss-Tokens umstylen (scharfe Kanten, Mono-Labels):
+- Blocks (ganze Layouts): https://shadcn-svelte.com/blocks
+- Komponenten-Docs: https://www.shadcn-svelte.com/docs/components
+- Community-Extras: https://www.shadcn-svelte-extras.com/components
 
 ## DO NOT
 
