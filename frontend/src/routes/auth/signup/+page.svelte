@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 
 	let email = $state('');
 	let sent = $state(false);
@@ -24,48 +27,55 @@
 	}
 </script>
 
-<div class="space-y-6">
+<div class="space-y-8">
 	{#if sent}
-		<div class="text-center space-y-2">
-			<h2 class="text-2xl font-semibold">Check your email</h2>
-			<p class="text-[--color-muted-foreground]">
+		<div class="space-y-4">
+			<div class="mk"><span class="mk-sq"></span></div>
+			<p class="eyebrow">Check your email</p>
+			<h2 class="title font-display font-black text-4xl">You're in the loop</h2>
+			<div class="rule"></div>
+			<p class="text-muted-foreground">
 				{#if isExisting}
-					We sent a login link to <strong>{email}</strong>.
+					We sent a login link to <strong class="text-foreground font-mono">{email}</strong>.
 				{:else}
-					We sent a verification link to <strong>{email}</strong>.
+					We sent a verification link to <strong class="text-foreground font-mono">{email}</strong>.
 				{/if}
 			</p>
 		</div>
 	{:else}
-		<div class="space-y-1">
-			<h2 class="text-2xl font-semibold">Create account</h2>
-			<p class="text-sm text-[--color-muted-foreground]">Enter your email to get started.</p>
+		<div class="space-y-4">
+			<div class="mk"><span class="mk-ci"></span></div>
+			<p class="eyebrow">Get started</p>
+			<h2 class="title font-display font-black text-4xl">Create account</h2>
+			<div class="rule"></div>
+			<p class="font-mono text-sm uppercase tracking-wider text-muted-foreground">
+				Enter your email to get started.
+			</p>
 		</div>
-		<form onsubmit={handleSubmit} class="space-y-4">
-			<div class="space-y-1">
-				<label for="email" class="text-sm font-medium">Email</label>
-				<input
+		<form onsubmit={handleSubmit} class="space-y-6">
+			<div class="space-y-2">
+				<Label for="email" class="font-mono uppercase tracking-wider text-xs">Email</Label>
+				<Input
 					id="email"
 					type="email"
 					bind:value={email}
 					required
 					placeholder="you@example.com"
-					class="w-full border border-[--color-border] rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-ring]"
 				/>
 			</div>
 			{#if error}
-				<p class="text-sm text-[--color-destructive]">{error}</p>
+				<p class="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-sm text-destructive">
+					{error}
+				</p>
 			{/if}
-			<button
-				type="submit"
-				disabled={loading}
-				class="w-full bg-[--color-primary] text-[--color-primary-foreground] py-2 rounded-md font-medium disabled:opacity-50"
-			>
+			<Button type="submit" disabled={loading} size="lg" class="w-full">
 				{loading ? 'Sending…' : 'Continue with email'}
-			</button>
+			</Button>
 		</form>
-		<p class="text-center text-sm text-[--color-muted-foreground]">
-			Already have an account? <a href="/auth/login" class="text-[--color-primary] hover:underline">Log in</a>
+		<div class="rule-thin"></div>
+		<p class="font-mono text-sm uppercase tracking-wider text-muted-foreground">
+			Already have an account?
+			<a href="/auth/login" class="text-primary underline underline-offset-4 hover:no-underline">Log in</a>
 		</p>
 	{/if}
 </div>

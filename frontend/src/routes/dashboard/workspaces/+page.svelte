@@ -4,6 +4,12 @@
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { workspaceStore } from '$lib/stores/workspaces.svelte';
 	import type { WorkspaceKind } from '$lib/api/workspaces';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import { NativeSelect } from '$lib/components/ui/select';
+	import { Badge } from '$lib/components/ui/badge';
+	import * as Card from '$lib/components/ui/card';
 
 	const KIND_OPTIONS: { value: WorkspaceKind; label: string }[] = [
 		{ value: 'personal', label: 'Personal' },
@@ -47,107 +53,100 @@
 </script>
 
 {#if authStore.isAuthenticated}
-	<div class="min-h-screen flex flex-col">
-		<header class="border-b border-[--color-border] px-6 py-4 flex items-center gap-4">
-			<a href="/dashboard" class="text-sm text-[--color-muted-foreground] hover:underline">← Dashboard</a>
-			<h1 class="font-semibold text-lg">Workspaces</h1>
-		</header>
+	<div class="space-y-10">
+		<div>
+			<p class="eyebrow">Workspaces</p>
+			<h1 class="title font-display font-black text-4xl md:text-5xl mt-2">Your workspaces</h1>
+		</div>
 
-		<main class="flex-1 p-8">
-			<div class="max-w-2xl mx-auto space-y-6">
+		<div class="rule"></div>
 
-				{#if workspaceStore.error}
-					<p class="text-sm text-[--color-destructive]">{workspaceStore.error}</p>
-				{/if}
+		{#if workspaceStore.error}
+			<p class="font-mono text-sm text-destructive">{workspaceStore.error}</p>
+		{/if}
 
-				<!-- Workspace list -->
-				{#if workspaceStore.loading}
-					<p class="text-sm text-[--color-muted-foreground]">Loading…</p>
-				{:else if workspaceStore.workspaces.length === 0}
-					<p class="text-sm text-[--color-muted-foreground]">You don't belong to any workspaces yet.</p>
-				{:else}
-					<ul class="divide-y divide-[--color-border] border border-[--color-border] rounded-md overflow-hidden">
-						{#each workspaceStore.workspaces as ws (ws.id)}
-							<li>
-								<a
-									href="/dashboard/workspaces/{ws.id}"
-									class="flex items-center justify-between px-4 py-3 hover:bg-[--color-secondary] transition-colors"
-								>
-									<div>
-										<span class="font-medium">{ws.name}</span>
-										<span class="ml-2 text-xs text-[--color-muted-foreground] capitalize">{ws.kind}</span>
-									</div>
-									<span class="text-xs text-[--color-muted-foreground]">→</span>
-								</a>
-							</li>
-						{/each}
-					</ul>
-				{/if}
+		<!-- Workspace list -->
+		{#if workspaceStore.loading}
+			<p class="font-mono text-sm uppercase tracking-wider text-muted-foreground">Loading…</p>
+		{:else if workspaceStore.workspaces.length === 0}
+			<div class="border-2 border-border p-8 flex items-start gap-4">
+				<span class="mk mk-sq shrink-0 mt-1"></span>
+				<p class="text-muted-foreground">You don't belong to any workspaces yet.</p>
+			</div>
+		{:else}
+			<ul class="border-2 border-border">
+				{#each workspaceStore.workspaces as ws, i (ws.id)}
+					<li class={i > 0 ? 'border-t-2 border-border' : ''}>
+						<a
+							href="/dashboard/workspaces/{ws.id}"
+							class="flex items-center justify-between px-5 py-4 transition-colors hover:bg-primary hover:text-primary-foreground group"
+						>
+							<div class="flex items-center gap-4">
+								<span class="font-display font-bold text-lg">{ws.name}</span>
+								<Badge variant="outline" class="uppercase tracking-wider">{ws.kind}</Badge>
+							</div>
+							<span class="font-mono text-lg" aria-hidden="true">→</span>
+						</a>
+					</li>
+				{/each}
+			</ul>
+		{/if}
 
-				<!-- Create workspace -->
-				{#if showForm}
+		<div class="rule-thin"></div>
+
+		<!-- Create workspace -->
+		{#if showForm}
+			<Card.Root class="border-2 border-border rounded-none">
+				<Card.Header>
+					<p class="eyebrow">Create</p>
+					<Card.Title class="font-display font-bold text-2xl">New workspace</Card.Title>
+				</Card.Header>
+				<Card.Content>
 					<form
 						onsubmit={(e) => { e.preventDefault(); handleCreate(); }}
-						class="border border-[--color-border] rounded-md p-4 space-y-4"
+						class="space-y-6"
 					>
-						<h2 class="font-medium">New workspace</h2>
-
-						<div class="space-y-1">
-							<label for="ws-name" class="text-sm font-medium">Name</label>
-							<input
+						<div class="space-y-2">
+							<Label for="ws-name" class="font-mono uppercase tracking-wider text-xs">Name</Label>
+							<Input
 								id="ws-name"
 								type="text"
 								bind:value={newName}
 								placeholder="My Workspace"
 								required
-								class="w-full border border-[--color-border] rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-ring]"
 							/>
 						</div>
 
-						<div class="space-y-1">
-							<label for="ws-kind" class="text-sm font-medium">Type</label>
-							<select
-								id="ws-kind"
-								bind:value={newKind}
-								class="w-full border border-[--color-border] rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-ring] bg-[--color-background]"
-							>
+						<div class="space-y-2">
+							<Label for="ws-kind" class="font-mono uppercase tracking-wider text-xs">Type</Label>
+							<NativeSelect id="ws-kind" bind:value={newKind}>
 								{#each KIND_OPTIONS as opt (opt.value)}
 									<option value={opt.value}>{opt.label}</option>
 								{/each}
-							</select>
+							</NativeSelect>
 						</div>
 
 						{#if createError}
-							<p class="text-sm text-[--color-destructive]">{createError}</p>
+							<p class="font-mono text-sm text-destructive">{createError}</p>
 						{/if}
 
-						<div class="flex gap-2">
-							<button
-								type="submit"
-								disabled={creating}
-								class="bg-[--color-primary] text-[--color-primary-foreground] px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
-							>
+						<div class="flex gap-3 pt-2">
+							<Button type="submit" disabled={creating}>
 								{creating ? 'Creating…' : 'Create workspace'}
-							</button>
-							<button
+							</Button>
+							<Button
 								type="button"
+								variant="outline"
 								onclick={() => { showForm = false; createError = null; }}
-								class="border border-[--color-border] px-4 py-2 rounded-md text-sm"
 							>
 								Cancel
-							</button>
+							</Button>
 						</div>
 					</form>
-				{:else}
-					<button
-						onclick={() => (showForm = true)}
-						class="border border-[--color-border] px-4 py-2 rounded-md text-sm font-medium hover:bg-[--color-secondary] transition-colors"
-					>
-						+ New workspace
-					</button>
-				{/if}
-
-			</div>
-		</main>
+				</Card.Content>
+			</Card.Root>
+		{:else}
+			<Button variant="outline" onclick={() => (showForm = true)}>+ New workspace</Button>
+		{/if}
 	</div>
 {/if}

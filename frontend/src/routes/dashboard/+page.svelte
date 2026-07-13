@@ -1,30 +1,18 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { authStore } from '$lib/stores/auth.svelte';
+	// The dashboard layout provides the header, nav, logout and main wrapper,
+	// so this page renders only its own content.
 </script>
 
-<div class="min-h-screen flex flex-col">
-	<!-- Header -->
-	<header class="border-b border-[--color-border] px-6 py-4 flex items-center justify-between">
-		<h1 class="font-semibold text-lg">Dashboard</h1>
-		<div class="flex items-center gap-4">
-			<span class="text-sm text-[--color-muted-foreground]">{authStore.currentUser?.email}</span>
-			<a href="/dashboard/settings" class="text-sm hover:underline">Settings</a>
-			<button
-				onclick={() => { authStore.logout(); goto('/'); }}
-				class="text-sm text-[--color-muted-foreground] hover:text-[--color-foreground]"
-			>
-				Log out
-			</button>
-		</div>
-	</header>
-	<!-- Main content -->
-	<main class="flex-1 p-8">
-		<div class="max-w-4xl mx-auto">
-			<h2 class="text-2xl font-semibold mb-2">Welcome</h2>
-			<p class="text-[--color-muted-foreground]">
-				Your dashboard is empty. Add your product features here.
-			</p>
-		</div>
-	</main>
-</div>
+<section>
+	<p class="eyebrow">Dashboard</p>
+	<h1 class="title font-display font-black text-foreground">Welcome</h1>
+
+	<div class="rule my-6"></div>
+
+	<div class="flex items-start gap-4">
+		<div class="mk mk-sq mt-1 shrink-0" aria-hidden="true"></div>
+		<p class="max-w-xl text-base text-muted-foreground">
+			Your dashboard is empty. Add your product features here.
+		</p>
+	</div>
+</section>

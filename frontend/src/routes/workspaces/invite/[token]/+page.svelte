@@ -5,6 +5,8 @@
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { membersApi } from '$lib/api/workspaces';
 	import { workspacesApi } from '$lib/api/workspaces';
+	import { Button } from '$lib/components/ui/button';
+	import * as Card from '$lib/components/ui/card';
 
 	let status = $state<'loading' | 'success' | 'error' | 'unauthenticated'>('loading');
 	let workspaceName = $state<string | null>(null);
@@ -40,64 +42,90 @@
 	});
 </script>
 
-<div class="min-h-screen flex items-center justify-center p-6">
-	<div class="max-w-sm w-full text-center space-y-4">
+<div class="min-h-screen flex items-center justify-center bg-background p-6">
+	<div class="w-full max-w-md">
 
 		{#if status === 'loading'}
-			<p class="text-[--color-muted-foreground]">Accepting invitation…</p>
+			<Card.Root class="border-2 border-border">
+				<Card.Content class="py-12 text-center">
+					<div class="mk mk-sq mx-auto mb-6"></div>
+					<p class="font-mono uppercase tracking-wider text-sm text-muted-foreground">
+						Accepting invitation…
+					</p>
+				</Card.Content>
+			</Card.Root>
 
 		{:else if status === 'unauthenticated'}
-			<h1 class="text-xl font-semibold">Sign in to accept this invitation</h1>
-			<p class="text-sm text-[--color-muted-foreground]">
-				You need to be logged in to join a workspace.
-			</p>
-			<a
-				href="/auth/login?next={encodeURIComponent(page.url.pathname)}"
-				class="inline-block bg-[--color-primary] text-[--color-primary-foreground] px-6 py-2 rounded-md text-sm font-medium"
-			>
-				Log in
-			</a>
+			<Card.Root class="border-2 border-border">
+				<Card.Header>
+					<span class="eyebrow">Invitation</span>
+					<Card.Title class="title font-display font-black text-3xl leading-none">
+						Sign in to accept
+					</Card.Title>
+					<Card.Description class="font-mono text-sm text-muted-foreground">
+						You need to be logged in to join a workspace.
+					</Card.Description>
+				</Card.Header>
+				<div class="rule-thin mx-6"></div>
+				<Card.Footer class="pt-6">
+					<Button
+						href="/auth/login?next={encodeURIComponent(page.url.pathname)}"
+						size="lg"
+						class="w-full"
+					>
+						Log in
+					</Button>
+				</Card.Footer>
+			</Card.Root>
 
 		{:else if status === 'success'}
-			<div class="space-y-3">
-				<div class="text-4xl">&#10003;</div>
-				<h1 class="text-xl font-semibold">
-					{#if workspaceName}
-						You've joined {workspaceName}!
-					{:else}
-						You've joined the workspace!
-					{/if}
-				</h1>
-				<p class="text-sm text-[--color-muted-foreground]">
-					You are now a member of this workspace.
-				</p>
-				<div class="flex flex-col sm:flex-row gap-2 justify-center pt-2">
+			<Card.Root class="border-2 border-border">
+				<Card.Header>
+					<div class="mk mk-ci mb-4"></div>
+					<span class="eyebrow">Joined</span>
+					<Card.Title class="title font-display font-black text-3xl leading-none">
+						{#if workspaceName}
+							You've joined {workspaceName}
+						{:else}
+							You've joined the workspace
+						{/if}
+					</Card.Title>
+					<Card.Description class="font-mono text-sm text-muted-foreground">
+						You are now a member of this workspace.
+					</Card.Description>
+				</Card.Header>
+				<div class="rule-thin mx-6"></div>
+				<Card.Footer class="flex flex-col sm:flex-row gap-3 pt-6">
 					{#if workspaceId}
-						<a
-							href="/dashboard/workspaces/{workspaceId}"
-							class="bg-[--color-primary] text-[--color-primary-foreground] px-6 py-2 rounded-md text-sm font-medium"
-						>
+						<Button href="/dashboard/workspaces/{workspaceId}" size="lg" class="w-full sm:flex-1">
 							Go to workspace
-						</a>
+						</Button>
 					{/if}
-					<a
-						href="/dashboard"
-						class="border border-[--color-border] px-6 py-2 rounded-md text-sm font-medium hover:bg-[--color-secondary]"
-					>
+					<Button href="/dashboard" variant="outline" size="lg" class="w-full sm:flex-1">
 						Dashboard
-					</a>
-				</div>
-			</div>
+					</Button>
+				</Card.Footer>
+			</Card.Root>
 
 		{:else if status === 'error'}
-			<h1 class="text-xl font-semibold text-[--color-destructive]">Invitation failed</h1>
-			<p class="text-sm text-[--color-muted-foreground]">{errorMessage}</p>
-			<a
-				href="/dashboard"
-				class="inline-block border border-[--color-border] px-6 py-2 rounded-md text-sm font-medium hover:bg-[--color-secondary]"
-			>
-				Back to dashboard
-			</a>
+			<Card.Root class="border-2 border-destructive">
+				<Card.Header>
+					<div class="mk mk-tr mb-4"></div>
+					<span class="eyebrow">Error</span>
+					<Card.Title class="title font-display font-black text-3xl leading-none text-destructive">
+						Invitation failed
+					</Card.Title>
+					<Card.Description class="font-mono text-sm text-muted-foreground">
+						{errorMessage}
+					</Card.Description>
+				</Card.Header>
+				<div class="rule-thin mx-6"></div>
+				<Card.Footer class="pt-6">
+					<Button href="/dashboard" variant="outline" size="lg" class="w-full">
+						Back to dashboard
+					</Button>
+				</Card.Footer>
+			</Card.Root>
 		{/if}
 
 	</div>

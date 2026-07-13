@@ -3,6 +3,9 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 
 	type Status = 'loading' | 'success' | 'expired' | 'error';
 	let status = $state<Status>('loading');
@@ -35,35 +38,61 @@
 	}
 </script>
 
-<div class="text-center space-y-4">
+<div class="mx-auto w-full max-w-md">
 	{#if status === 'loading'}
-		<p class="text-[--color-muted-foreground]">Verifying…</p>
+		<div class="flex items-center gap-3 border-2 border-border bg-background p-6">
+			<span class="mk"><span class="mk-sq"></span></span>
+			<p class="font-mono text-sm uppercase tracking-wider text-muted-foreground">Verifying…</p>
+		</div>
 	{:else if status === 'success'}
-		<p class="text-green-600 font-medium">✓ Email verified! Redirecting…</p>
-	{:else if status === 'expired'}
-		<h2 class="text-xl font-semibold">Link expired</h2>
-		<p class="text-[--color-muted-foreground]">Request a new verification link.</p>
-		{#if resent}
-			<p class="text-green-600 text-sm">New link sent!</p>
-		{:else}
-			<div class="flex gap-2">
-				<input
-					type="email"
-					bind:value={resendEmail}
-					placeholder="your@email.com"
-					class="flex-1 border border-[--color-border] rounded-md px-3 py-2 text-sm"
-				/>
-				<button
-					onclick={handleResend}
-					class="bg-[--color-primary] text-white px-4 py-2 rounded-md text-sm font-medium"
-				>
-					Resend
-				</button>
+		<div class="border-2 border-border bg-background p-6">
+			<span class="eyebrow">Verified</span>
+			<div class="rule my-4"></div>
+			<div class="flex items-center gap-3">
+				<span class="mk"><span class="mk-ci bg-green"></span></span>
+				<p class="font-display text-lg font-bold text-foreground">Email verified — redirecting…</p>
 			</div>
-		{/if}
+		</div>
+	{:else if status === 'expired'}
+		<div class="border-2 border-border bg-background p-6">
+			<span class="eyebrow">Link expired</span>
+			<div class="rule my-4"></div>
+			<h2 class="title font-display text-3xl font-black text-foreground">Request a new link</h2>
+			<p class="mt-2 font-mono text-sm uppercase tracking-wider text-muted-foreground">
+				This verification link is no longer valid.
+			</p>
+			{#if resent}
+				<div class="mt-6 flex items-center gap-3 border-2 border-border p-4">
+					<span class="mk"><span class="mk-sq bg-green"></span></span>
+					<p class="font-mono text-sm uppercase tracking-wider text-foreground">New link sent!</p>
+				</div>
+			{:else}
+				<div class="mt-6 space-y-3">
+					<Label for="resend-email">Email</Label>
+					<div class="flex gap-2">
+						<Input
+							id="resend-email"
+							type="email"
+							bind:value={resendEmail}
+							placeholder="your@email.com"
+							class="flex-1"
+						/>
+						<Button onclick={handleResend}>Resend</Button>
+					</div>
+				</div>
+			{/if}
+		</div>
 	{:else}
-		<h2 class="text-xl font-semibold">Verification failed</h2>
-		<p class="text-[--color-muted-foreground]">{errorMessage}</p>
-		<a href="/auth/signup" class="text-[--color-primary] hover:underline text-sm">Back to signup</a>
+		<div class="border-2 border-border bg-background p-6">
+			<span class="eyebrow">Verification failed</span>
+			<div class="rule my-4"></div>
+			<div class="flex items-center gap-3">
+				<span class="mk"><span class="mk-sq bg-red"></span></span>
+				<h2 class="font-display text-2xl font-bold text-foreground">Something went wrong</h2>
+			</div>
+			<p class="mt-2 font-mono text-sm uppercase tracking-wider text-destructive">{errorMessage}</p>
+			<div class="rule-thin my-4"></div>
+			<Button variant="outline" href="/auth/signup">Back to signup</Button>
+		</div>
 	{/if}
 </div>

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import * as Card from '$lib/components/ui/card';
 
 	let showDeleteConfirm = $state(false);
 	let saving = $state(false);
@@ -30,70 +32,76 @@
 	}
 </script>
 
-<div class="min-h-screen flex flex-col">
-	<header class="border-b border-[--color-border] px-6 py-4 flex items-center gap-4">
-		<a href="/dashboard" class="text-sm text-[--color-muted-foreground] hover:underline">← Dashboard</a>
-		<h1 class="font-semibold text-lg">Settings</h1>
-	</header>
-	<main class="flex-1 p-8">
-		<div class="max-w-lg mx-auto space-y-8">
-			<!-- Account info -->
-			<section class="space-y-2">
-				<h2 class="text-lg font-medium">Account</h2>
-				<p class="text-sm text-[--color-muted-foreground]">{authStore.currentUser?.email}</p>
-			</section>
+<div class="space-y-12">
+	<div>
+		<p class="eyebrow">Preferences</p>
+		<h1 class="title font-display font-black text-5xl mt-4">Settings</h1>
+	</div>
 
-			<!-- Language -->
-			<section class="space-y-3">
-				<h2 class="text-lg font-medium">Language</h2>
-				<div class="flex gap-2">
-					{#each [['en', 'English'], ['de', 'Deutsch']] as [code, label]}
-						<button
-							onclick={() => saveLanguage(code as 'de' | 'en')}
-							disabled={saving}
-							class="px-4 py-2 rounded-md border text-sm font-medium transition-colors
-								{authStore.currentUser?.languagePreference === code
-									? 'bg-[--color-primary] text-[--color-primary-foreground] border-[--color-primary]'
-									: 'border-[--color-border] hover:bg-[--color-secondary]'}"
-						>
-							{label}
-						</button>
-					{/each}
-				</div>
-				{#if saved}
-					<p class="text-sm text-green-600">Saved!</p>
-				{/if}
-			</section>
+	<div class="rule"></div>
 
-			<!-- Danger zone -->
-			<section class="space-y-3 border border-[--color-destructive] rounded-md p-4">
-				<h2 class="text-lg font-medium text-[--color-destructive]">Danger zone</h2>
+	<!-- Account info -->
+	<section class="space-y-4">
+		<div class="flex items-center gap-3">
+			<span class="mk"><span class="mk-sq"></span></span>
+			<h2 class="font-display font-bold text-2xl">Account</h2>
+		</div>
+		<Card.Root class="border-2 border-border rounded-none">
+			<Card.Content class="py-6">
+				<p class="font-mono uppercase tracking-wider text-xs text-muted-foreground">Email</p>
+				<p class="text-lg mt-1">{authStore.currentUser?.email}</p>
+			</Card.Content>
+		</Card.Root>
+	</section>
+
+	<!-- Language -->
+	<section class="space-y-4">
+		<div class="flex items-center gap-3">
+			<span class="mk"><span class="mk-ci"></span></span>
+			<h2 class="font-display font-bold text-2xl">Language</h2>
+		</div>
+		<div class="flex gap-3">
+			{#each [['en', 'English'], ['de', 'Deutsch']] as [code, label]}
+				<Button
+					variant={authStore.currentUser?.languagePreference === code ? 'default' : 'outline'}
+					onclick={() => saveLanguage(code as 'de' | 'en')}
+					disabled={saving}
+				>
+					{label}
+				</Button>
+			{/each}
+		</div>
+		{#if saved}
+			<p class="font-mono uppercase tracking-wider text-sm text-green">Saved!</p>
+		{/if}
+	</section>
+
+	<div class="rule-thin"></div>
+
+	<!-- Danger zone -->
+	<section class="space-y-4">
+		<div class="flex items-center gap-3">
+			<span class="mk"><span class="mk-tr"></span></span>
+			<h2 class="font-display font-bold text-2xl text-destructive">Danger zone</h2>
+		</div>
+		<Card.Root class="border-2 border-destructive rounded-none">
+			<Card.Content class="py-6 space-y-4">
 				{#if showDeleteConfirm}
 					<p class="text-sm">Are you sure? This cannot be undone.</p>
-					<div class="flex gap-2">
-						<button
-							onclick={deleteAccount}
-							disabled={deleting}
-							class="bg-[--color-destructive] text-[--color-destructive-foreground] px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
-						>
+					<div class="flex gap-3">
+						<Button variant="destructive" onclick={deleteAccount} disabled={deleting}>
 							{deleting ? 'Deleting…' : 'Yes, delete my account'}
-						</button>
-						<button
-							onclick={() => (showDeleteConfirm = false)}
-							class="border border-[--color-border] px-4 py-2 rounded-md text-sm"
-						>
+						</Button>
+						<Button variant="outline" onclick={() => (showDeleteConfirm = false)}>
 							Cancel
-						</button>
+						</Button>
 					</div>
 				{:else}
-					<button
-						onclick={() => (showDeleteConfirm = true)}
-						class="border border-[--color-destructive] text-[--color-destructive] px-4 py-2 rounded-md text-sm font-medium hover:bg-red-50"
-					>
+					<Button variant="outline" onclick={() => (showDeleteConfirm = true)}>
 						Delete account
-					</button>
+					</Button>
 				{/if}
-			</section>
-		</div>
-	</main>
+			</Card.Content>
+		</Card.Root>
+	</section>
 </div>

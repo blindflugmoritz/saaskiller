@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { Button } from '$lib/components/ui/button';
 
 	type Status = 'loading' | 'success' | 'error';
 	let status = $state<Status>('loading');
@@ -23,14 +24,36 @@
 	});
 </script>
 
-<div class="text-center space-y-4">
+<div class="mx-auto w-full max-w-md space-y-6">
 	{#if status === 'loading'}
-		<p class="text-[--color-muted-foreground]">Logging you in…</p>
+		<div class="border-2 border-border bg-background p-8 text-center space-y-4">
+			<div class="mk mk-ci mx-auto"></div>
+			<p class="eyebrow justify-center">Magic link</p>
+			<p class="font-mono uppercase tracking-wider text-sm text-muted-foreground">
+				Logging you in…
+			</p>
+		</div>
 	{:else if status === 'success'}
-		<p class="text-green-600 font-medium">✓ Logged in! Redirecting…</p>
+		<div class="border-2 border-border bg-background p-8 text-center space-y-4">
+			<div class="mk mk-sq mx-auto"></div>
+			<p class="eyebrow justify-center">Success</p>
+			<p class="font-display font-bold text-2xl text-green">Logged in</p>
+			<p class="font-mono uppercase tracking-wider text-sm text-muted-foreground">
+				Redirecting…
+			</p>
+		</div>
 	{:else}
-		<h2 class="text-xl font-semibold">Link expired or invalid</h2>
-		<p class="text-[--color-muted-foreground]">{errorMessage}</p>
-		<a href="/auth/login" class="text-[--color-primary] hover:underline text-sm">Request a new link</a>
+		<div class="border-2 border-border bg-background p-8 text-center space-y-6">
+			<div class="mk mk-tr mx-auto"></div>
+			<p class="eyebrow justify-center">Error</p>
+			<h2 class="title font-display font-black text-3xl text-foreground">
+				Link expired or invalid
+			</h2>
+			<div class="rule-thin"></div>
+			<p class="text-muted-foreground">{errorMessage}</p>
+			<Button href="/auth/login" variant="default" size="lg" class="w-full">
+				Request a new link
+			</Button>
+		</div>
 	{/if}
 </div>

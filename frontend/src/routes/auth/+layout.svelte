@@ -2,8 +2,13 @@
 	const { children } = $props();
 </script>
 
-<div class="min-h-screen flex items-center justify-center bg-[--color-secondary] p-4">
-	<div class="w-full max-w-md bg-[--color-background] rounded-lg border border-[--color-border] shadow-sm p-8">
-		{@render children()}
+<!-- Swiss auth frame: paper ground, a hard-bordered card, top yellow rule. No
+     rounding, no shadow — the border does the work. -->
+<div class="flex min-h-screen items-center justify-center bg-secondary p-4">
+	<div class="w-full max-w-md border-2 border-border bg-card">
+		<div class="h-1.5 bg-yellow"></div>
+		<div class="p-8">
+			{@render children()}
+		</div>
 	</div>
 </div>
