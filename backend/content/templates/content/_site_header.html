@@ -1,0 +1,35 @@
+{# ── Swiss site header (server-rendered) ───────────────────────────────────────
+   The Django-template twin of frontend SiteHeader.svelte — same look via the
+   shared Tailwind tokens loaded by {% island_assets %}. Reuse across CMS pages
+   and other server-rendered tools.
+
+   Context it reads (all optional):
+     site_brand      brand text        (default "SaasKiller")
+     site_brand_href brand link        (default "/")
+     site_nav        list of {label, href, active}  for the mono nav row
+     site_chip       small yellow chip text (e.g. "Beta")
+     site_accent     rule colour: "yellow" (default) | "red" | "blue"
+   Include with:  {% include "content/_site_header.html" %}
+#}
+<header class="border-b-[6px] {% if site_accent == 'red' %}border-red{% elif site_accent == 'blue' %}border-blue{% else %}border-yellow{% endif %} bg-primary text-primary-foreground">
+    <div class="mx-auto flex max-w-5xl items-baseline justify-between gap-4 px-6 py-4">
+        <a href="{{ site_brand_href|default:'/' }}" class="font-display text-xl md:text-2xl font-black uppercase tracking-wider">
+            {{ site_brand|default:"SaasKiller" }}
+        </a>
+        {% if site_chip %}
+        <span class="bg-yellow px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider text-ink">{{ site_chip }}</span>
+        {% endif %}
+    </div>
+
+    {% if site_nav %}
+    <nav class="mx-auto flex max-w-5xl flex-wrap gap-x-6 gap-y-1 px-6 pb-3" aria-label="Primary">
+        {% for item in site_nav %}
+        <a href="{{ item.href }}"
+           {% if item.active %}aria-current="page"{% endif %}
+           class="border-b-[3px] pb-1 font-mono text-xs uppercase tracking-wider transition-colors {% if item.active %}border-yellow text-yellow{% else %}border-transparent text-primary-foreground hover:text-yellow{% endif %}">
+            {{ item.label }}
+        </a>
+        {% endfor %}
+    </nav>
+    {% endif %}
+</header>

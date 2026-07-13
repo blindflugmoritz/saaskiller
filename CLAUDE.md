@@ -166,7 +166,9 @@ E2E_BASE_URL=https://myapp-staging-frontend.deploio.app npm run test:e2e:smoke  
 
 shadcn-svelte is initialised (`frontend/components.json`). Components are **copied into the repo** at `frontend/src/lib/components/ui/` — they are yours to edit, not an npm dependency. The `cn` helper lives at `$lib/utils/cn`.
 
-Present: `button` (variants: default/secondary/outline/destructive/ghost/link), `input`, `label`, `badge`, `card`, `textarea`, `select` (native), `sidebar`. Post-login screens use the `sidebar` shell (`dashboard/+layout.svelte`).
+Present: `button` (variants: default/secondary/outline/destructive/ghost/link), `input`, `label`, `badge`, `card`, `textarea`, `select` (native), `sidebar`, `site-header`. Post-login screens use the `sidebar` shell (`dashboard/+layout.svelte`); public/tool pages use `SiteHeader` (black bar + brand + optional chip + mono nav + coloured rule) — see `routes/+page.svelte`.
+
+The `site-header` has a server-rendered twin for CMS/tool pages: the Django partial `backend/content/templates/content/_site_header.html` (same look via the shared Tailwind tokens). Include it with `{% include "content/_site_header.html" %}` and set `site_brand` / `site_nav` / `site_chip` in the view context. Use it for CMS pages, Feedloop, and other server-rendered tools so the Swiss look is consistent across Frontend and backend-rendered surfaces.
 
 **Adding more components** — copy from the registry and restyle to the Swiss tokens (sharp corners, mono labels):
 - Blocks (full layouts — sidebar, login, dashboard): https://shadcn-svelte.com/blocks

@@ -30,10 +30,9 @@
 </head>
 <body class="bg-[--color-background] text-[--color-foreground]">
 
-    {# ── Minimal nav stub — replace with your app's navigation component ── #}
-    <header class="border-b border-[--color-border] px-6 py-3">
-        <a href="/" class="text-sm font-semibold hover:underline">← Home</a>
-    </header>
+    {# ── Swiss site header (shared look with the SvelteKit SiteHeader). Set
+       site_brand / site_nav / site_chip in the view context to customise. ── #}
+    {% include "content/_site_header.html" %}
 
     {# ── Page content ── #}
     <main>

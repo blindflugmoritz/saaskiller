@@ -47,7 +47,13 @@ src/lib/components/ui/card/       (card.svelte + card-*.svelte, index.ts)
 src/lib/components/ui/textarea/   (textarea.svelte, index.ts)
 src/lib/components/ui/select/     (native-select.svelte, index.ts)
 src/lib/components/ui/sidebar/    (sidebar.svelte, index.ts)
+src/lib/components/ui/site-header/ (site-header.svelte, index.ts)
 ```
+
+For server-rendered CMS/tool pages, also copy the Django partial
+`backend/content/templates/content/_site_header.html` and include it where you
+have a page shell (`{% include "content/_site_header.html" %}`). Same Swiss look
+as the SvelteKit `SiteHeader`, driven by the shared Tailwind tokens.
 
 These import only `$lib/utils/cn`, `bits-ui`, `tailwind-variants` — all already
 present. Nothing here references the project name, so no renaming needed.

@@ -1,17 +1,13 @@
 <script lang="ts">
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { SiteHeader } from '$lib/components/ui/site-header';
 </script>
 
-<!-- Swiss/poster landing: black header bar + yellow rule, mono eyebrow, big
-     Helvetica display title, geometric markers, shadcn buttons. -->
+<!-- Swiss/poster landing: reusable SiteHeader, mono eyebrow, big Helvetica
+     display title, geometric markers, shadcn buttons. -->
 <div class="min-h-screen bg-background text-foreground">
-	<header class="border-b-[6px] border-yellow bg-primary text-primary-foreground">
-		<div class="mx-auto flex max-w-5xl items-baseline justify-between gap-4 px-6 py-5">
-			<span class="font-display text-2xl font-black uppercase tracking-wider">SaasKiller</span>
-			<span class="font-mono text-xs uppercase tracking-wider">Django · SvelteKit</span>
-		</div>
-	</header>
+	<SiteHeader brand="SaasKiller" chip="Django · SvelteKit" />
 
 	<main class="mx-auto max-w-5xl px-6 py-20">
 		<span class="eyebrow">Forkable SaaS template</span>
