@@ -177,6 +177,10 @@ The `site-header` has a server-rendered twin for CMS/tool pages: the Django part
 
 When you pull in a block/component, keep the Swiss conventions: `--radius: 0`, `font-mono` uppercase labels, hard `border-2` borders, the three accent colours. Verify with `npm run check` and a screenshot before committing.
 
+## Design skill
+
+`.claude/skills/web-design/` holds the **web-design skill** — read it before writing markup or CSS for any page, view, form or dashboard. It covers registry-first component choice, hierarchy/spacing rules, the four required states, and the screenshot review loop. Its numbers (typography distribution, spacing rhythm, registry usage) and its antipattern list are **measured against this boilerplate** and go stale in a fork: after `setup.sh`, recalibrate them by following `.claude/skills/web-design/PORTIEREN.md`. An uncalibrated skill claims authority it does not have.
+
 ## Auth flow (Magic link → JWT)
 
 1. User submits email → `POST /api/auth/request-magic-link/`
