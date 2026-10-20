@@ -1,4 +1,4 @@
-.PHONY: setup dev-be dev-fe dev-worker dev-islands build-islands migrate makemigrations createsuperuser shell test-be test-fe test-e2e test-all check test-smoke ports
+.PHONY: setup dev-be dev-fe dev-worker dev-islands build-islands migrate makemigrations createsuperuser shell test-be test-fe test-e2e test-all test-setup check test-smoke ports
 
 # ── Ports ─────────────────────────────────────────────────────────────────────
 # Ports come from the shared registry (~/coding/ports.txt) via portman.sh, so
@@ -81,6 +81,10 @@ test-fe:
 
 test-e2e:
 	cd frontend && npx playwright test
+
+# Dry run of setup.sh + generated deploy-init.sh against a fake nctl (macOS)
+test-setup:
+	bash scripts/test_deploy_init.sh
 
 # Runs all three suites automatically (starts + stops servers)
 test-all:

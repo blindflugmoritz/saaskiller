@@ -204,6 +204,16 @@ if [[ "$HOSTING" != "none" ]]; then
   fi
 fi
 
+# On deplo.io a lone environment is the live one, so it is named 'production'.
+# App names cannot be changed later: a staging-only project ends up serving its
+# real domain from "<project>-staging-*" apps forever.
+if [[ "$HOSTING" == "deploio" ]] && $USE_STAGING && ! $USE_PRODUCTION; then
+  echo "  ⚠  Only one environment chosen — on deplo.io it is named 'production'"
+  echo "     (apps $PROJECT_NAME-production-*). deplo.io apps cannot be renamed later."
+  USE_STAGING=false
+  USE_PRODUCTION=true
+fi
+
 # deplo.io extra info (used later to generate deploy-init.sh)
 GITHUB_ORG=""
 GITHUB_REPO=""
@@ -215,6 +225,47 @@ if [[ "$HOSTING" == "deploio" ]]; then
   [[ -z "$GITHUB_REPO" ]] && GITHUB_REPO="$PROJECT_NAME"
   if $USE_PRODUCTION; then
     prompt_str domain DOMAIN "Production domain (e.g. myapp.ch, leave empty to skip)"
+  fi
+fi
+
+# deplo.io database mode (used later to generate deploy-init.sh).
+#   shared         one shared DB per environment (postgresdatabase, ≈ CHF 5.50/month each) — default
+#   server:<name>  one DB per environment on an EXISTING dedicated server; nothing is created
+#   dedicated      a new dedicated server just for this project (≈ CHF 104/month)
+DB_MODE=""
+DB_SERVER=""
+if [[ "$HOSTING" == "deploio" ]]; then
+  if cfg_has db; then
+    _db_choice="$(cfg_get db)"
+    echo "  db = $_db_choice  (from config)"
+  elif $NON_INTERACTIVE; then
+    _db_choice="shared"   # documented default
+  else
+    echo ""
+    echo "  Database on deplo.io:"
+    echo "  [1] shared     — own DB on Nine's shared cluster, ≈ CHF 5.50/month per environment (recommended)"
+    echo "  [2] server     — DBs on an EXISTING dedicated Postgres server (nothing new is created)"
+    echo "  [3] dedicated  — a new dedicated server just for this project, ≈ CHF 104/month"
+    read -p "Database [1/2/3]: " _db_pick
+    case "$_db_pick" in
+      2) read -p "  Name of the existing server (see: nctl get postgres): " _db_server
+         _db_choice="server:$_db_server" ;;
+      3) _db_choice="dedicated" ;;
+      *) _db_choice="shared" ;;
+    esac
+  fi
+  case "$_db_choice" in
+    shared|dedicated) DB_MODE="$_db_choice" ;;
+    server:*)         DB_MODE="server"; DB_SERVER="${_db_choice#server:}" ;;
+    *) echo "Error: invalid db '$_db_choice' (shared | server:<name> | dedicated)" >&2; exit 1 ;;
+  esac
+  if [[ "$DB_MODE" == "server" && ( -z "$DB_SERVER" || "$DB_SERVER" =~ [^a-z0-9-] ) ]]; then
+    echo "Error: db = server:<name> needs the name of an existing deplo.io Postgres server (lowercase, digits, hyphens)." >&2
+    exit 1
+  fi
+  if [[ "$DB_MODE" == "dedicated" ]]; then
+    echo "  ⚠  db = dedicated creates a Postgres server for this project alone: ≈ CHF 104/month."
+    echo "     The shared default costs ≈ CHF 5.50/month per environment."
   fi
 fi
 
@@ -232,7 +283,7 @@ fi
 echo ""
 echo "Setting up project: $PROJECT_NAME"
 echo "Features: workspaces=$USE_WORKSPACES cms=$USE_CMS stripe=$USE_STRIPE tasks=$USE_TASKS websockets=$USE_WEBSOCKETS s3=$USE_S3 i18n=$USE_I18N sentry=$USE_SENTRY apikeys=$USE_APIKEYS github_oauth=$USE_GITHUB_OAUTH mobile=$USE_MOBILE feedloop=$USE_FEEDLOOP"
-echo "Hosting: $HOSTING  staging=$USE_STAGING  production=$USE_PRODUCTION"
+echo "Hosting: $HOSTING  staging=$USE_STAGING  production=$USE_PRODUCTION${DB_MODE:+  db=$DB_MODE${DB_SERVER:+:$DB_SERVER}}"
 echo ""
 
 # ── Rename saaskiller → project name ──────────────────────────────────────────
@@ -458,17 +509,31 @@ if [[ "$HOSTING" == "deploio" ]]; then
     rm -f .github/workflows/deploy-staging.yml
   fi
 
+  # Environments on deplo.io. A lone environment is always 'production' (see the
+  # hosting questions above), so DEPLOY_ENVS is "staging production" or "production".
+  if $USE_STAGING; then
+    DEPLOY_ENVS="staging production"
+    DEPLOY_DEFAULT_ENV="staging"
+  else
+    DEPLOY_ENVS="production"
+    DEPLOY_DEFAULT_ENV="production"
+  fi
+  DEPLOY_ENVS_USAGE="${DEPLOY_ENVS// /|}"
+
   # Write provider-specific deploy.sh
   cat > deploy.sh << DEPLOYEOF
 #!/usr/bin/env bash
 # deploy.sh — Deploy $PROJECT_NAME to deplo.io
-# Usage: ./deploy.sh staging | ./deploy.sh production
+# Usage: ./deploy.sh [$DEPLOY_ENVS_USAGE]   (default: $DEPLOY_DEFAULT_ENV)
 set -eo pipefail
 
-ENV=\${1:-staging}
+ENV=\${1:-$DEPLOY_DEFAULT_ENV}
 REVISION=\$(git rev-parse HEAD)
 
-[[ "\$ENV" != "staging" && "\$ENV" != "production" ]] && { echo "Usage: ./deploy.sh [staging|production]"; exit 1; }
+case "\$ENV" in
+  $DEPLOY_ENVS_USAGE) ;;
+  *) echo "Usage: ./deploy.sh [$DEPLOY_ENVS_USAGE]"; exit 1 ;;
+esac
 command -v nctl &>/dev/null || { echo "nctl not found: brew install ninech/taps/nctl"; exit 1; }
 
 # Load DEPLOIO_PROJECT from .env
@@ -486,33 +551,34 @@ nctl update app $PROJECT_NAME-\${ENV}-frontend --git-revision=\$REVISION --proje
 
 echo ""
 echo "✓ \$ENV deployed"
+DEPLOYEOF
+
+  if $USE_STAGING; then
+    cat >> deploy.sh << DEPLOYEOF2
 if [ "\$ENV" = "staging" ]; then
   echo "  Backend:  https://$PROJECT_NAME-staging-backend.deploio.app/api/auth/me/"
   echo "  Frontend: https://$PROJECT_NAME-staging-frontend.deploio.app"
-else
-DEPLOYEOF
-
-  if [[ -n "$DOMAIN" ]]; then
-    cat >> deploy.sh << DEPLOYEOF2
-  echo "  Backend:  https://api.${DOMAIN}/api/auth/me/"
-  echo "  Frontend: https://www.${DOMAIN}"
+  exit 0
+fi
 DEPLOYEOF2
-  else
-    cat >> deploy.sh << DEPLOYEOF3
-  echo "  Backend:  https://$PROJECT_NAME-production-backend.deploio.app/api/auth/me/"
-  echo "  Frontend: https://$PROJECT_NAME-production-frontend.deploio.app"
-DEPLOYEOF3
   fi
-  echo "fi" >> deploy.sh
+  if [[ -n "$DOMAIN" ]]; then
+    cat >> deploy.sh << DEPLOYEOF3
+echo "  Backend:  https://api.${DOMAIN}/api/auth/me/"
+echo "  Frontend: https://www.${DOMAIN}"
+DEPLOYEOF3
+  else
+    cat >> deploy.sh << DEPLOYEOF4
+echo "  Backend:  https://$PROJECT_NAME-production-backend.deploio.app/api/auth/me/"
+echo "  Frontend: https://$PROJECT_NAME-production-frontend.deploio.app"
+DEPLOYEOF4
+  fi
   chmod +x deploy.sh
 
-  # Write deploy-init.sh (one-time deplo.io provisioning script)
-  _USE_STAGING_ARG=$USE_STAGING
-  _USE_PRODUCTION_ARG=$USE_PRODUCTION
-  _USE_TASKS_ARG=$USE_TASKS
-  _DOMAIN_ARG="$DOMAIN"
-  _GITHUB_ORG_ARG="$GITHUB_ORG"
-  _GITHUB_REPO_ARG="$GITHUB_REPO"
+  # Write deploy-init.sh (one-time deplo.io provisioning script).
+  # bootstrap_database.py runs before migrate: it creates the database named in
+  # DATABASE_URL when it is missing (server/dedicated mode) and is a no-op otherwise.
+  RELEASE_CMD="python scripts/bootstrap_database.py && python manage.py collectstatic --noinput && python manage.py migrate --noinput && python manage.py createcachetable --no-color"
 
   cat > deploy-init.sh << INITEOF
 #!/usr/bin/env bash
@@ -534,232 +600,266 @@ DEPLOYEOF3
 set -eo pipefail
 
 PROJECT_NAME="$PROJECT_NAME"
-GIT_URL="https://github.com/${_GITHUB_ORG_ARG}/${_GITHUB_REPO_ARG}"
-DOMAIN="${_DOMAIN_ARG}"
+GIT_URL="https://github.com/${GITHUB_ORG}/${GITHUB_REPO}"
+DOMAIN="${DOMAIN}"
+
+# ── Datenbank ────────────────────────────────────────────────────────────────
+# DB_MODE (aus setup.config.ini: db = …) — hier umstellbar, solange noch nichts
+# angelegt ist:
+#   shared     eine geteilte DB je Umgebung (postgresdatabase, ≈ CHF 5.50/Monat)
+#   server     je Umgebung eine DB auf dem BESTEHENDEN Server \$DB_SERVER —
+#              es wird kein Server angelegt
+#   dedicated  ein eigener Server nur für dieses Projekt (≈ CHF 104/Monat)
+DB_MODE="$DB_MODE"
+DB_SERVER="$DB_SERVER"
+DB_NAME_PREFIX="$PKG_NAME"     # server/dedicated: DBs heissen \${DB_NAME_PREFIX}_<umgebung>
+DB_LOCATION="nine-cz42"        # shared: Standort der geteilten DB
 
 GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 log()  { echo -e "\${BLUE}▶ \$1\${NC}"; }
 ok()   { echo -e "\${GREEN}✓ \$1\${NC}"; }
 warn() { echo -e "\${YELLOW}⚠ \$1\${NC}"; }
 die()  { echo -e "\${RED}✗ \$1\${NC}"; exit 1; }
+INITEOF
+
+  cat >> deploy-init.sh << 'INITEOF_HELPERS'
+
+# Legt eine Ressource an und unterscheidet die Fehlerarten.
+#
+# Früher stand hier überall `nctl create … 2>/dev/null && ok || warn "Already exists"`.
+# Damit wurde JEDER Fehlschlag als "existiert schon" gemeldet: am 20.08.2026
+# scheiterte `create postgres` am Kontingent, das Skript meldete "Already exists"
+# und endete mit Exit 0 — die Datenbank gab es nicht.
+_nctl_anlegen() {
+  local was="$1"; shift
+  local fehler
+  if fehler=$(nctl "$@" 2>&1); then
+    ok "  $was"
+    return 0
+  fi
+  if echo "$fehler" | grep -qi "already exists"; then
+    warn "  $was — existiert schon"
+    return 0
+  fi
+  if echo "$fehler" | grep -qiE "quota|kontingent"; then
+    case "$2" in
+      postgres|postgresdatabase)
+        die "$was: Kontingent bei Nine erschöpft. Kontingent bei Nine erhöhen lassen oder oben DB_MODE=server und DB_SERVER=<name> setzen (setup.config.ini: db = server:<name>). nctl: $(echo "$fehler" | tail -1)" ;;
+      *)
+        die "$was: Kontingent bei Nine erschöpft — bei Nine erhöhen lassen. nctl: $(echo "$fehler" | tail -1)" ;;
+    esac
+  fi
+  die "$was konnte nicht angelegt werden: $(echo "$fehler" | tail -2)"
+}
+
+# Ändert eine Ressource; bricht mit der Meldung von nctl ab statt sie zu verschlucken.
+_nctl_setzen() {
+  local was="$1"; shift
+  local fehler
+  fehler=$(nctl "$@" 2>&1) || die "$was fehlgeschlagen: $(echo "$fehler" | tail -2)"
+  ok "  $was"
+}
+
+# Ersetzt den DB-Namen (Pfad) eines Connection-Strings, Query (?sslmode=…) bleibt.
+_db_name_setzen() {
+  printf '%s' "$1" | sed -E "s|^([a-z]+://[^/?]+)(/[^?]*)?|\1/$2|"
+}
+
+# Bricht ab, wenn eine DATABASE_URL leer ist oder nicht nach Postgres aussieht.
+_db_url_pruefen() {
+  local env="$1" url="$2"
+  [ -n "$url" ] || die "DATABASE_URL ($env) ist leer — Abbruch, bevor Apps ohne Datenbank konfiguriert werden."
+  case "$url" in
+    postgres://*|postgresql://*) ;;
+    *) die "DATABASE_URL ($env) sieht nicht nach Postgres aus (beginnt mit '${url%%:*}')." ;;
+  esac
+}
+
+# Legt die DB einer Umgebung an (bzw. leitet ihren Namen ab) und setzt DB_URL_<umgebung>.
+_db_fuer_umgebung() {
+  local env="$1" url name
+  if [ "$DB_MODE" = "shared" ]; then
+    name="${PROJECT_NAME}-${env}-db"
+    _nctl_anlegen "$name" create postgresdatabase "$name" \
+      --project="$DEPLOIO_PROJECT" --location="$DB_LOCATION" --wait
+    # Der String ist schon vollständig: postgres://<user>:<pw>@<host>/<user>?sslmode=require
+    # — der DB-Name ist der zufällige User-Name. Nichts anhängen.
+    url=$(nctl get postgresdatabase "$name" --project="$DEPLOIO_PROJECT" --print-connection-string 2>/dev/null) || true
+  else
+    # Der Server-String zeigt auf die Default-DB "postgres"; dort darf der App-User
+    # seit PostgreSQL 15 kein DDL. Deshalb eine eigene DB pro Projekt und Umgebung,
+    # angelegt vom Deploy-Job (scripts/bootstrap_database.py).
+    name="${DB_NAME_PREFIX}_${env}"
+    url=$(_db_name_setzen "$DB_SERVER_URL" "$name")
+    case "$url" in
+      *"/$name"|*"/$name?"*) ;;
+      *) die "DATABASE_URL ($env) zeigt nicht auf /$name — Connection-String-Format geändert?" ;;
+    esac
+  fi
+  _db_url_pruefen "$env" "$url"
+  printf -v "DB_URL_${env}" '%s' "$url"
+  ok "  DATABASE_URL ($env) → ${url##*@}"
+}
+INITEOF_HELPERS
+
+  cat >> deploy-init.sh << INITEOF_HEAD
 
 echo ""
 echo "╔══════════════════════════════════════════════╗"
 echo "║   $PROJECT_NAME — deplo.io Setup             ║"
 echo "╚══════════════════════════════════════════════╝"
 echo ""
+INITEOF_HEAD
+
+  cat >> deploy-init.sh << 'INITEOF_PROJECT'
 
 command -v nctl &>/dev/null || die "nctl not found. Install: brew install ninech/taps/nctl"
 nctl auth whoami &>/dev/null || { warn "Not logged in — starting login..."; nctl auth login; }
-ok "nctl ready: \$(nctl auth whoami 2>/dev/null | head -1)"
+ok "nctl ready: $(nctl auth whoami 2>/dev/null | head -1)"
 
-[ -z "\$GITHUB_PAT" ] && die "GITHUB_PAT not set. Export it before running."
+[ -z "$GITHUB_PAT" ] && die "GITHUB_PAT not set. Export it before running."
+case "$DB_MODE" in
+  shared|dedicated) ;;
+  server) [ -n "$DB_SERVER" ] || die "DB_MODE=server braucht DB_SERVER=<name> (siehe: nctl get postgres)." ;;
+  *) die "Unbekannter DB_MODE '$DB_MODE' (shared | server | dedicated)." ;;
+esac
 echo ""
 
 # ── Projekt ermitteln ────────────────────────────────────────────────────────
 log "Step 1 — Determine project"
-DEPLOIO_PROJECT=\$(nctl get projects 2>/dev/null | awk 'NR==2 {print \$1}')
-[ -z "\$DEPLOIO_PROJECT" ] && die "No project found. Check nctl auth login."
-ok "Project: \$DEPLOIO_PROJECT"
-nctl auth set-project "\$DEPLOIO_PROJECT"
+DEPLOIO_PROJECT=$(nctl get projects 2>/dev/null | awk 'NR==2 {print $1}')
+[ -z "$DEPLOIO_PROJECT" ] && die "No project found. Check nctl auth login."
+ok "Project: $DEPLOIO_PROJECT"
+nctl auth set-project "$DEPLOIO_PROJECT"
 
 # Write DEPLOIO_PROJECT to .env
 if grep -q 'DEPLOIO_PROJECT' .env 2>/dev/null; then
-  sed -i '' "s|DEPLOIO_PROJECT=.*|DEPLOIO_PROJECT=\$DEPLOIO_PROJECT|" .env
+  sed -i '' "s|DEPLOIO_PROJECT=.*|DEPLOIO_PROJECT=$DEPLOIO_PROJECT|" .env
 else
-  echo "DEPLOIO_PROJECT=\$DEPLOIO_PROJECT" >> .env
+  echo "DEPLOIO_PROJECT=$DEPLOIO_PROJECT" >> .env
 fi
 echo ""
 
+# ── Datenbanken ──────────────────────────────────────────────────────────────
+# Vor den Apps: scheitert die Datenbank (z.B. Kontingent), entsteht keine App,
+# die ohne DATABASE_URL dasteht.
+log "Step 2 — Postgres (DB_MODE=$DB_MODE)"
+if [ "$DB_MODE" = "dedicated" ]; then
+  warn "  Eigener Postgres-Server nur für dieses Projekt: ≈ CHF 104/Monat."
+  warn "  Geteilte DBs (DB_MODE=shared) kosten ≈ CHF 5.50/Monat je Umgebung."
+  DB_SERVER="${PROJECT_NAME}-db"
+  _nctl_anlegen "$DB_SERVER" create postgres "$DB_SERVER" --project="$DEPLOIO_PROJECT" --wait
+fi
+if [ "$DB_MODE" != "shared" ]; then
+  DB_SERVER_URL=$(nctl get postgres "$DB_SERVER" --project="$DEPLOIO_PROJECT" --print-connection-string 2>/dev/null) || true
+  [ -n "$DB_SERVER_URL" ] || die "Postgres-Server '$DB_SERVER' nicht gefunden in Projekt $DEPLOIO_PROJECT (nctl get postgres). Es wird bewusst kein neuer angelegt."
+  ok "  Server: $DB_SERVER"
+fi
+INITEOF_PROJECT
+
+  for env in $DEPLOY_ENVS; do
+    echo "_db_fuer_umgebung $env" >> deploy-init.sh
+  done
+
+  cat >> deploy-init.sh << 'INITEOF_APPS'
+echo ""
+
 # ── Apps anlegen ─────────────────────────────────────────────────────────────
-log "Step 2 — Create apps"
+log "Step 3 — Create apps"
+INITEOF_APPS
 
-INITEOF
-
-  if $_USE_STAGING_ARG; then
-    cat >> deploy-init.sh << INITEOF2
-log "  Staging Backend..."
-nctl create app ${PROJECT_NAME}-staging-backend \\
+  for env in $DEPLOY_ENVS; do
+    # staging tracks main explicitly; production keeps nctl's default revision
+    if [[ "$env" == "staging" ]]; then GIT_REV_FLAG=" --git-revision=main"; else GIT_REV_FLAG=""; fi
+    cat >> deploy-init.sh << INITEOF_APP
+log "  ${env^} Backend..."
+_nctl_anlegen "${PROJECT_NAME}-${env}-backend" create app ${PROJECT_NAME}-${env}-backend \\
   --project="\$DEPLOIO_PROJECT" \\
   --git-url="\$GIT_URL" \\
-  --git-sub-path=backend \\
-  --git-revision=main \\
+  --git-sub-path=backend${GIT_REV_FLAG} \\
   --git-username=x-token-auth \\
   --git-password="\$GITHUB_PAT" \\
-  --deploy-job-command="python manage.py collectstatic --noinput && python manage.py migrate --noinput && python manage.py createcachetable --no-color 2>/dev/null || true" \\
-  --deploy-job-name=release \\
-  2>/dev/null && ok "  ${PROJECT_NAME}-staging-backend" || warn "  Already exists"
+  --deploy-job-command="${RELEASE_CMD}" \\
+  --deploy-job-name=release
 
-log "  Staging Frontend..."
-nctl create app ${PROJECT_NAME}-staging-frontend \\
+log "  ${env^} Frontend..."
+_nctl_anlegen "${PROJECT_NAME}-${env}-frontend" create app ${PROJECT_NAME}-${env}-frontend \\
   --project="\$DEPLOIO_PROJECT" \\
   --git-url="\$GIT_URL" \\
-  --git-sub-path=frontend \\
-  --git-revision=main \\
+  --git-sub-path=frontend${GIT_REV_FLAG} \\
   --git-username=x-token-auth \\
-  --git-password="\$GITHUB_PAT" \\
-  2>/dev/null && ok "  ${PROJECT_NAME}-staging-frontend" || warn "  Already exists"
-nctl update app ${PROJECT_NAME}-staging-frontend --project="\$DEPLOIO_PROJECT" --buildpack-stack=paketo
-INITEOF2
-  fi
+  --git-password="\$GITHUB_PAT"
+_nctl_setzen "${PROJECT_NAME}-${env}-frontend buildpack" update app ${PROJECT_NAME}-${env}-frontend --project="\$DEPLOIO_PROJECT" --buildpack-stack=paketo
 
-  if $_USE_PRODUCTION_ARG; then
-    cat >> deploy-init.sh << INITEOF3
-log "  Production Backend..."
-nctl create app ${PROJECT_NAME}-production-backend \\
-  --project="\$DEPLOIO_PROJECT" \\
-  --git-url="\$GIT_URL" \\
-  --git-sub-path=backend \\
-  --git-username=x-token-auth \\
-  --git-password="\$GITHUB_PAT" \\
-  --deploy-job-command="python manage.py collectstatic --noinput && python manage.py migrate --noinput && python manage.py createcachetable --no-color 2>/dev/null || true" \\
-  --deploy-job-name=release \\
-  2>/dev/null && ok "  ${PROJECT_NAME}-production-backend" || warn "  Already exists"
-
-log "  Production Frontend..."
-nctl create app ${PROJECT_NAME}-production-frontend \\
-  --project="\$DEPLOIO_PROJECT" \\
-  --git-url="\$GIT_URL" \\
-  --git-sub-path=frontend \\
-  --git-username=x-token-auth \\
-  --git-password="\$GITHUB_PAT" \\
-  2>/dev/null && ok "  ${PROJECT_NAME}-production-frontend" || warn "  Already exists"
-nctl update app ${PROJECT_NAME}-production-frontend --project="\$DEPLOIO_PROJECT" --buildpack-stack=paketo
-INITEOF3
-  fi
+INITEOF_APP
+  done
 
   # Worker jobs (only if tasks feature active)
-  if $_USE_TASKS_ARG; then
-    cat >> deploy-init.sh << INITEOF4
+  if $USE_TASKS; then
+    cat >> deploy-init.sh << 'INITEOF_WORKER'
 echo ""
-log "Step 3 — Configure worker jobs (django-q2)"
-INITEOF4
-    if $_USE_STAGING_ARG; then
-      cat >> deploy-init.sh << INITEOF4B
-nctl update app ${PROJECT_NAME}-staging-backend --project="\$DEPLOIO_PROJECT" \\
-  --worker-job-command="python manage.py qcluster" --worker-job-name=qcluster \\
-  2>/dev/null && ok "  Staging qcluster" || warn "  Already configured"
-INITEOF4B
-    fi
-    if $_USE_PRODUCTION_ARG; then
-      cat >> deploy-init.sh << INITEOF4C
-nctl update app ${PROJECT_NAME}-production-backend --project="\$DEPLOIO_PROJECT" \\
-  --worker-job-command="python manage.py qcluster" --worker-job-name=qcluster \\
-  2>/dev/null && ok "  Production qcluster" || warn "  Already configured"
-INITEOF4C
-    fi
-  fi
-
-  # Databases
-  cat >> deploy-init.sh << INITEOF5
-
-echo ""
-log "Step 4 — Create Postgres databases"
-INITEOF5
-  if $_USE_STAGING_ARG; then
-    cat >> deploy-init.sh << INITEOF5B
-nctl create postgres ${PROJECT_NAME}-staging-db --project="\$DEPLOIO_PROJECT" --wait \\
-  2>/dev/null && ok "  ${PROJECT_NAME}-staging-db" || warn "  Already exists"
-DB_STAGING_BASE=\$(nctl get postgres ${PROJECT_NAME}-staging-db --project="\$DEPLOIO_PROJECT" --print-connection-string 2>/dev/null)
-DB_STAGING_URL="\${DB_STAGING_BASE}/${PROJECT_NAME}-staging-db"
-INITEOF5B
-  fi
-  if $_USE_PRODUCTION_ARG; then
-    cat >> deploy-init.sh << INITEOF5C
-nctl create postgres ${PROJECT_NAME}-production-db --project="\$DEPLOIO_PROJECT" --wait \\
-  2>/dev/null && ok "  ${PROJECT_NAME}-production-db" || warn "  Already exists"
-DB_PROD_URL_BASE=\$(nctl get postgres ${PROJECT_NAME}-production-db --project="\$DEPLOIO_PROJECT" --print-connection-string 2>/dev/null)
-DB_PROD_URL="\${DB_PROD_URL_BASE}/${PROJECT_NAME}-production-db"
-INITEOF5C
+log "Step 4 — Configure worker jobs (django-q2)"
+INITEOF_WORKER
+    for env in $DEPLOY_ENVS; do
+      cat >> deploy-init.sh << INITEOF_WORKER_ENV
+_nctl_setzen "${env^} qcluster" update app ${PROJECT_NAME}-${env}-backend --project="\$DEPLOIO_PROJECT" \\
+  --worker-job-command="python manage.py qcluster" --worker-job-name=qcluster
+INITEOF_WORKER_ENV
+    done
   fi
 
   # Env vars
-  cat >> deploy-init.sh << INITEOF6
+  cat >> deploy-init.sh << 'INITEOF_ENV'
 
 echo ""
 log "Step 5 — Set env vars"
 [ -f ".env" ] && source .env || true
-SK_STAGING=\$(openssl rand -hex 32)
-SK_PROD=\$(openssl rand -hex 32)
-INITEOF6
-  if $_USE_STAGING_ARG; then
-    cat >> deploy-init.sh << INITEOF6B
-nctl update app ${PROJECT_NAME}-staging-backend --project="\$DEPLOIO_PROJECT" \\
-  --env="SECRET_KEY=\$SK_STAGING" \\
-  --env="DATABASE_URL=\$DB_STAGING_URL" \\
-  --env="DEBUG=False" \\
-  --env="ALLOWED_HOSTS=.deploio.app" \\
-  --env="FRONTEND_URL=https://${PROJECT_NAME}-staging-frontend.deploio.app" \\
-  --env="CORS_ALLOWED_ORIGINS=https://${PROJECT_NAME}-staging-frontend.deploio.app" \\
-  \${RESEND_API_KEY:+--env="RESEND_API_KEY=\$RESEND_API_KEY"} \\
-  --build-env="SECRET_KEY=\$SK_STAGING" \\
-  --build-env="DATABASE_URL=sqlite:////tmp/build.db"
-ok "  Staging Backend env"
-
-nctl update app ${PROJECT_NAME}-staging-frontend --project="\$DEPLOIO_PROJECT" \\
-  --build-env="PUBLIC_API_URL=https://${PROJECT_NAME}-staging-backend.deploio.app/api" \\
-  --build-env="BP_STATIC_WEBROOT=build" \\
-  --build-env="BP_WEB_SERVER_ENABLE_PUSH_STATE=true"
-ok "  Staging Frontend env"
-INITEOF6B
-  fi
-  if $_USE_PRODUCTION_ARG; then
-    if [[ -n "$_DOMAIN_ARG" ]]; then
-      cat >> deploy-init.sh << INITEOF6C
-nctl update app ${PROJECT_NAME}-production-backend --project="\$DEPLOIO_PROJECT" \\
-  --env="SECRET_KEY=\$SK_PROD" \\
-  --env="DATABASE_URL=\$DB_PROD_URL" \\
-  --env="DEBUG=False" \\
-  --env="ALLOWED_HOSTS=.deploio.app,api.${_DOMAIN_ARG}" \\
-  --env="FRONTEND_URL=https://www.${_DOMAIN_ARG}" \\
-  --env="CORS_ALLOWED_ORIGINS=https://www.${_DOMAIN_ARG},https://${_DOMAIN_ARG}" \\
-  \${RESEND_API_KEY:+--env="RESEND_API_KEY=\$RESEND_API_KEY"} \\
-  --build-env="SECRET_KEY=\$SK_PROD" \\
-  --build-env="DATABASE_URL=sqlite:////tmp/build.db"
-ok "  Production Backend env"
-
-nctl update app ${PROJECT_NAME}-production-frontend --project="\$DEPLOIO_PROJECT" \\
-  --build-env="PUBLIC_API_URL=https://api.${_DOMAIN_ARG}/api" \\
-  --build-env="BP_STATIC_WEBROOT=build" \\
-  --build-env="BP_WEB_SERVER_ENABLE_PUSH_STATE=true"
-ok "  Production Frontend env"
-INITEOF6C
+INITEOF_ENV
+  for env in $DEPLOY_ENVS; do
+    if [[ "$env" == "production" && -n "$DOMAIN" ]]; then
+      _ALLOWED=".deploio.app,api.${DOMAIN}"
+      _FRONTEND="https://www.${DOMAIN}"
+      _CORS="https://www.${DOMAIN},https://${DOMAIN}"
+      _API="https://api.${DOMAIN}/api"
     else
-      cat >> deploy-init.sh << INITEOF6D
-nctl update app ${PROJECT_NAME}-production-backend --project="\$DEPLOIO_PROJECT" \\
-  --env="SECRET_KEY=\$SK_PROD" \\
-  --env="DATABASE_URL=\$DB_PROD_URL" \\
+      _ALLOWED=".deploio.app"
+      _FRONTEND="https://${PROJECT_NAME}-${env}-frontend.deploio.app"
+      _CORS="$_FRONTEND"
+      _API="https://${PROJECT_NAME}-${env}-backend.deploio.app/api"
+    fi
+    cat >> deploy-init.sh << INITEOF_ENV_APP
+SK=\$(openssl rand -hex 32)
+_nctl_setzen "${env^} Backend env" update app ${PROJECT_NAME}-${env}-backend --project="\$DEPLOIO_PROJECT" \\
+  --env="SECRET_KEY=\$SK" \\
+  --env="DATABASE_URL=\$DB_URL_${env}" \\
   --env="DEBUG=False" \\
-  --env="ALLOWED_HOSTS=.deploio.app" \\
-  --env="FRONTEND_URL=https://${PROJECT_NAME}-production-frontend.deploio.app" \\
-  --env="CORS_ALLOWED_ORIGINS=https://${PROJECT_NAME}-production-frontend.deploio.app" \\
+  --env="ALLOWED_HOSTS=${_ALLOWED}" \\
+  --env="FRONTEND_URL=${_FRONTEND}" \\
+  --env="CORS_ALLOWED_ORIGINS=${_CORS}" \\
   \${RESEND_API_KEY:+--env="RESEND_API_KEY=\$RESEND_API_KEY"} \\
-  --build-env="SECRET_KEY=\$SK_PROD" \\
+  --build-env="SECRET_KEY=\$SK" \\
   --build-env="DATABASE_URL=sqlite:////tmp/build.db"
-ok "  Production Backend env"
 
-nctl update app ${PROJECT_NAME}-production-frontend --project="\$DEPLOIO_PROJECT" \\
-  --build-env="PUBLIC_API_URL=https://${PROJECT_NAME}-production-backend.deploio.app/api" \\
+_nctl_setzen "${env^} Frontend env" update app ${PROJECT_NAME}-${env}-frontend --project="\$DEPLOIO_PROJECT" \\
+  --build-env="PUBLIC_API_URL=${_API}" \\
   --build-env="BP_STATIC_WEBROOT=build" \\
   --build-env="BP_WEB_SERVER_ENABLE_PUSH_STATE=true"
-ok "  Production Frontend env"
-INITEOF6D
-    fi
-  fi
+
+INITEOF_ENV_APP
+  done
 
   # Service Account
   cat >> deploy-init.sh << INITEOF7
 
 echo ""
 log "Step 6 — CI/CD Service Account"
-nctl create apiserviceaccount ${PROJECT_NAME}-ci --project="\$DEPLOIO_PROJECT" \\
-  2>/dev/null && ok "  Service account '${PROJECT_NAME}-ci' created" || warn "  Already exists"
+_nctl_anlegen "Service account '${PROJECT_NAME}-ci'" create apiserviceaccount ${PROJECT_NAME}-ci --project="\$DEPLOIO_PROJECT"
 
 echo ""
 echo ""
 echo "══════════════════════════════════════════════"
 echo "  GitHub Secrets — add these at:"
-echo "  https://github.com/${_GITHUB_ORG_ARG}/${_GITHUB_REPO_ARG}/settings/secrets/actions"
+echo "  https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/settings/secrets/actions"
 echo "══════════════════════════════════════════════"
 echo ""
 CREDS=\$(nctl get apiserviceaccount ${PROJECT_NAME}-ci --project="\$DEPLOIO_PROJECT" --print-credentials 2>/dev/null)
@@ -771,9 +871,9 @@ if [ -n "\$CREDS" ]; then
   echo "  NCTL_ORGANIZATION      = \$DEPLOIO_PROJECT"
   echo ""
   echo "  Or use gh CLI:"
-  echo "  gh secret set NCTL_API_CLIENT_ID     --body \"\$CLIENT_ID\"     --repo ${_GITHUB_ORG_ARG}/${_GITHUB_REPO_ARG}"
-  echo "  gh secret set NCTL_API_CLIENT_SECRET --body \"\$CLIENT_SECRET\" --repo ${_GITHUB_ORG_ARG}/${_GITHUB_REPO_ARG}"
-  echo "  gh secret set NCTL_ORGANIZATION      --body \"\$DEPLOIO_PROJECT\" --repo ${_GITHUB_ORG_ARG}/${_GITHUB_REPO_ARG}"
+  echo "  gh secret set NCTL_API_CLIENT_ID     --body \"\$CLIENT_ID\"     --repo ${GITHUB_ORG}/${GITHUB_REPO}"
+  echo "  gh secret set NCTL_API_CLIENT_SECRET --body \"\$CLIENT_SECRET\" --repo ${GITHUB_ORG}/${GITHUB_REPO}"
+  echo "  gh secret set NCTL_ORGANIZATION      --body \"\$DEPLOIO_PROJECT\" --repo ${GITHUB_ORG}/${GITHUB_REPO}"
 else
   warn "Could not fetch credentials automatically. Run manually:"
   warn "  nctl get apiserviceaccount ${PROJECT_NAME}-ci --project=\$DEPLOIO_PROJECT --print-credentials"
@@ -781,29 +881,27 @@ fi
 INITEOF7
 
   # Production DNS section
-  if $_USE_PRODUCTION_ARG && [[ -n "$_DOMAIN_ARG" ]]; then
+  if [[ -n "$DOMAIN" ]]; then
     cat >> deploy-init.sh << INITEOF8
 
 echo ""
 log "Step 7 — Production DNS + Custom Domains"
 warn "  Set DNS CNAMEs at your registrar before running this step:"
-warn "    api.${_DOMAIN_ARG}  CNAME  ${PROJECT_NAME}-production-backend.deploio.app"
-warn "    www.${_DOMAIN_ARG}  CNAME  ${PROJECT_NAME}-production-frontend.deploio.app"
+warn "    api.${DOMAIN}  CNAME  ${PROJECT_NAME}-production-backend.deploio.app"
+warn "    www.${DOMAIN}  CNAME  ${PROJECT_NAME}-production-frontend.deploio.app"
 warn "  Infomaniak: use API v2 (/2/zones/{domain}/records) — v1 breaks DKIM records."
-warn "  Apex redirect (${_DOMAIN_ARG} → www): manual in Infomaniak Manager → Weiterleitungen"
+warn "  Apex redirect (${DOMAIN} → www): manual in Infomaniak Manager → Weiterleitungen"
 echo ""
-read -p "DNS records set? Register custom domains now? [y/N]: " _dns_ready
+read -p "DNS records set? Register custom domains now? [y/N]: " _dns_ready || true
 if [[ "\$_dns_ready" =~ ^[Yy]\$ ]]; then
-  nctl update app ${PROJECT_NAME}-production-backend --project="\$DEPLOIO_PROJECT" --hosts="api.${_DOMAIN_ARG}" \\
-    && ok "  api.${_DOMAIN_ARG} registered (TLS provisioning ~5 min)" || warn "  Check api.${_DOMAIN_ARG}"
-  nctl update app ${PROJECT_NAME}-production-frontend --project="\$DEPLOIO_PROJECT" --hosts="www.${_DOMAIN_ARG}" \\
-    && ok "  www.${_DOMAIN_ARG} registered (TLS provisioning ~5 min)" || warn "  Check www.${_DOMAIN_ARG}"
+  _nctl_setzen "api.${DOMAIN} registered (TLS provisioning ~5 min)" update app ${PROJECT_NAME}-production-backend --project="\$DEPLOIO_PROJECT" --hosts="api.${DOMAIN}"
+  _nctl_setzen "www.${DOMAIN} registered (TLS provisioning ~5 min)" update app ${PROJECT_NAME}-production-frontend --project="\$DEPLOIO_PROJECT" --hosts="www.${DOMAIN}"
 fi
 INITEOF8
   fi
 
   # Closing summary
-  cat >> deploy-init.sh << INITEOF9
+  cat >> deploy-init.sh << 'INITEOF9'
 
 echo ""
 echo "╔══════════════════════════════════════════════╗"
@@ -812,19 +910,17 @@ echo "╚═══════════════════════�
 echo ""
 INITEOF9
 
-  if $_USE_STAGING_ARG; then
-    cat >> deploy-init.sh << INITEOF10
-echo "  Staging: https://${PROJECT_NAME}-staging-frontend.deploio.app"
-INITEOF10
+  if $USE_STAGING; then
+    echo "echo \"  Staging: https://${PROJECT_NAME}-staging-frontend.deploio.app\"" >> deploy-init.sh
   fi
-  if $_USE_PRODUCTION_ARG && [[ -n "$_DOMAIN_ARG" ]]; then
-    cat >> deploy-init.sh << INITEOF11
-echo "  Production: https://www.${_DOMAIN_ARG}"
-INITEOF11
+  if [[ -n "$DOMAIN" ]]; then
+    echo "echo \"  Production: https://www.${DOMAIN}\"" >> deploy-init.sh
+  else
+    echo "echo \"  Production: https://${PROJECT_NAME}-production-frontend.deploio.app\"" >> deploy-init.sh
   fi
   cat >> deploy-init.sh << INITEOF12
 echo ""
-echo "  Next: bash deploy.sh staging   # triggers first build"
+echo "  Next: ./deploy.sh ${DEPLOY_DEFAULT_ENV}   # triggers first build"
 INITEOF12
 
   chmod +x deploy-init.sh
@@ -1185,12 +1281,13 @@ make test-all   # pytest + vitest + playwright
 $(if [[ "$HOSTING" == "deploio" ]]; then
 echo "\`\`\`bash
 # First time — provision apps, databases, env vars
+# Database mode: $DB_MODE${DB_SERVER:+ (server $DB_SERVER)} — see DB_MODE at the top of deploy-init.sh
 export GITHUB_PAT=\"github_pat_...\"
 bash deploy-init.sh
 
 # Every deploy
-./deploy.sh staging
-./deploy.sh production
+$($USE_STAGING && echo "./deploy.sh staging
+")./deploy.sh production
 \`\`\`"
 elif [[ "$HOSTING" == "pythonanywhere" ]]; then
 echo "\`\`\`bash
@@ -1296,7 +1393,7 @@ if [[ "$HOSTING" == "deploio" ]]; then
   echo "    export GOOGLE_CLIENT_SECRET=...       # optional"
   echo "    bash deploy-init.sh"
   echo ""
-  echo "    → Creates apps + Postgres on deplo.io, sets all env vars,"
+  echo "    → Creates apps + Postgres (db=$DB_MODE${DB_SERVER:+:$DB_SERVER}) on deplo.io, sets all env vars,"
   echo "      and prints the 3 GitHub Secrets you need to add."
   echo ""
   echo "  Step E — Add GitHub Secrets (URL printed by deploy-init.sh):"
@@ -1305,11 +1402,13 @@ if [[ "$HOSTING" == "deploio" ]]; then
   echo ""
   echo "  ── Deploy (ongoing) ──────────────────────────────────────"
   echo ""
-  echo "    ./deploy.sh staging          ← manual deploy"
-  if $USE_PRODUCTION; then
+  if $USE_STAGING; then
+    echo "    ./deploy.sh staging          ← manual deploy"
     echo "    ./deploy.sh production"
+    echo "    git push origin main         ← auto-deploys staging via GitHub Actions"
+  else
+    echo "    ./deploy.sh                  ← deploys production (the only environment)"
   fi
-  echo "    git push origin main         ← auto-deploys staging via GitHub Actions"
   echo ""
 elif [[ "$HOSTING" == "pythonanywhere" ]]; then
   echo "  ── Deploy Setup (run once) ───────────────────────────────"

@@ -95,7 +95,53 @@ See `setup.spec.json` → `keys[]`. Summary:
 | `staging` `production` | boolean | `false` | `hosting != none` |
 | `github_org` `github_repo` | string | `""` / project_name | `hosting == deploio` |
 | `domain` | string | `""` | `hosting == deploio` && `production` |
+| `db` | `shared` \| `server:<name>` \| `dedicated` | `shared` | `hosting == deploio` |
 | `pa_username` `pa_webapp_domain` `pa_app_dir` | string | `""` | `hosting == pythonanywhere` |
+
+---
+
+## Database on deplo.io
+
+`db` decides how `deploy-init.sh` provisions Postgres. The three modes cover
+the three kinds of project the template is used for:
+
+| Case | Environments | Config | What `deploy-init.sh` does |
+|---|---|---|---|
+| A — normal SaaS | staging + live | `staging = true`, `production = true`, `db = shared` | one `postgresdatabase` per environment |
+| B — live only | live | `production = true` (staging false), `db = shared` | one `postgresdatabase`, apps `<project>-production-*` |
+| C — group of projects on one server | staging + live | `db = server:<name>` | no new resource; DBs `<project>_staging` / `<project>_production` on server `<name>` |
+
+| Mode | Creates | Price (net, Sept 2026 invoice) |
+|---|---|---|
+| `shared` (default) | `nctl create postgresdatabase <project>-<env>-db --location=nine-cz42` | ≈ CHF 5.50 / month per environment |
+| `server:<name>` | nothing — uses the existing server `<name>` | share of a server you already pay for |
+| `dedicated` | `nctl create postgres <project>-db` (one server for all environments) | ≈ CHF 104 / month (nine-db-s) |
+
+**Why `shared` is the default:** template projects hold 10–20 MB of data.
+Until October 2026 every project created two dedicated servers (≈ CHF 208/month
+for databases alone); with shared DBs the same project costs ≈ CHF 11.
+
+Details that bit us before:
+
+- **Shared:** the connection string from
+  `nctl get postgresdatabase <name> --print-connection-string` is already
+  complete (`postgres://<user>:<pw>@<host>/<user>?sslmode=require` — the DB
+  name is the random user name). It is used unchanged; appending anything
+  breaks it.
+- **Server / dedicated:** the server's connection string points at the default
+  DB `postgres`, where the app user may not run DDL (PostgreSQL ≥ 15). So each
+  project/environment gets its own DB name, and `backend/scripts/bootstrap_database.py`
+  creates it in the release job before `migrate`. DB names use the Python package
+  name (`my-app` → `my_app_staging`), so they stay unique per project on a shared server.
+- **Errors are not swallowed:** every `nctl create` distinguishes "already exists"
+  (fine on a rerun) from any other error (abort). A quota error aborts with
+  "Kontingent bei Nine erhöhen lassen oder `db = server:<name>` wählen". The
+  DB step runs before the apps, and an empty `DATABASE_URL` aborts.
+- **Changing your mind after setup:** edit `DB_MODE` / `DB_SERVER` at the top of
+  the generated `deploy-init.sh` before running it.
+- **Dry run:** `bash scripts/test_deploy_init.sh` runs `setup.sh` + the generated
+  `deploy-init.sh` for each case against a fake `nctl` that only records calls
+  (`--keep` keeps the generated projects, `SHOW_CALLS=1` prints the calls).
 
 ---
 

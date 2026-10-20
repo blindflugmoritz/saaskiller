@@ -48,8 +48,10 @@ to `./setup.sh <project> --config setup.config.ini`.
    `# comments` whole-line and inline). Booleans: `true/false/yes/no/y/n/1/0`.
 4. Only set keys you're confident about; omitted keys are prompted interactively
    (or use defaults under `--non-interactive`).
-5. Respect `relevant_when`: don't set `github_org`/`domain` unless
+5. Respect `relevant_when`: don't set `github_org`/`domain`/`db` unless
    `hosting == deploio`; don't set `pa_*` unless `hosting == pythonanywhere`.
+   Leave `db = shared` unless the project explicitly belongs on an existing
+   server (`db = server:<name>`); never pick `dedicated` on your own (≈ CHF 104/month).
 6. Annotate each choice with an inline `# why` — it survives into the file the
    human reads. (Full guide: `SETUP_CONFIG.md`.)
 

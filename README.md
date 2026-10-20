@@ -127,7 +127,14 @@ bash deploy-init.sh
 ```
 
 Staging auto-deploys on push to `main` via GitHub Actions.  
-Migrations run automatically on every deploy (`release:` in Procfile).
+Migrations run automatically on every deploy (`release:` in Procfile).  
+A project with a single environment names it `production`; `./deploy.sh` then deploys production by default.
+
+**Database (`db` in `setup.config.ini`):** `shared` (default) gives each environment
+its own shared Postgres DB for ≈ CHF 5.50/month. `server:<name>` puts the DBs on an
+existing dedicated server; `dedicated` creates a server just for this project
+(≈ CHF 104/month — only if you really need it). Details: `SETUP_CONFIG.md` →
+"Database on deplo.io".
 
 ### PythonAnywhere
 

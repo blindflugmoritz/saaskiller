@@ -10,7 +10,7 @@
 # Git sub-path: backend
 # Procfile defines:
 #   web:     gunicorn saaskiller.wsgi --bind 0.0.0.0:$PORT
-#   release: python manage.py migrate --noinput   ← runs before every deploy
+#   release: bootstrap_database.py + migrate     ← runs before every deploy
 #   worker:  python manage.py qcluster            ← only if tasks feature enabled
 
 # Frontend app: saaskiller-staging-frontend / saaskiller-production-frontend
