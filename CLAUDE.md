@@ -16,6 +16,8 @@ chmod +x remote_setup.sh
 
 **Pre-answering setup (config file):** the ~20 setup questions can be answered up front with a config file — `./setup.sh my-project --config setup.config.ini`. Answers in the file are used automatically; anything omitted is still prompted (or, with `--non-interactive`, uses documented defaults). The machine-readable contract is `setup.spec.json`; a commented template is `setup.config.example.ini`; the full guide is `SETUP_CONFIG.md`. When pre-defining a project in another repo, write a `setup.config.ini` against `setup.spec.json` so the human never retypes the feature/hosting answers.
 
+**Database on deplo.io:** `db = shared` (default, one `postgresdatabase` per environment, ≈ CHF 5.50/month) · `db = server:<name>` (DBs on an existing dedicated server, nothing created) · `db = dedicated` (new server, ≈ CHF 104/month — only on explicit request). A single environment is always named `production`. See `SETUP_CONFIG.md` → "Database on deplo.io".
+
 Do not build product-specific features here. Keep everything generic and replaceable.
 
 ## Stack
@@ -63,6 +65,7 @@ make test-be         # pytest only
 make test-fe         # vitest only
 make test-e2e        # playwright only (requires servers running)
 make test-all        # ALL tests — starts servers automatically, runs everything, cleans up
+make test-setup      # dry run of setup.sh + deploy-init.sh against a fake nctl (no deplo.io calls)
 ```
 
 URLs:
