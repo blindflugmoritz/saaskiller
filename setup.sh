@@ -536,9 +536,9 @@ case "\$ENV" in
 esac
 command -v nctl &>/dev/null || { echo "nctl not found: brew install ninech/taps/nctl"; exit 1; }
 
-# Load DEPLOIO_PROJECT from .env
+# Load DEPLOIO_PROJECT + DEPLOIO_HASH from .env (both written by deploy-init.sh)
 if [ -f .env ]; then
-  export \$(grep -v '^#' .env | grep 'DEPLOIO_PROJECT' | xargs 2>/dev/null) || true
+  export \$(grep -v '^#' .env | grep -E '^DEPLOIO_(PROJECT|HASH)=' | xargs 2>/dev/null) || true
 fi
 [ -z "\$DEPLOIO_PROJECT" ] && { echo "DEPLOIO_PROJECT not set in .env"; exit 1; }
 
@@ -556,8 +556,9 @@ DEPLOYEOF
   if $USE_STAGING; then
     cat >> deploy.sh << DEPLOYEOF2
 if [ "\$ENV" = "staging" ]; then
-  echo "  Backend:  https://$PROJECT_NAME-staging-backend.deploio.app/api/auth/me/"
-  echo "  Frontend: https://$PROJECT_NAME-staging-frontend.deploio.app"
+  [ -n "\$DEPLOIO_HASH" ] || { echo "  (URLs: DEPLOIO_HASH fehlt in .env — bash deploy-init.sh schreibt ihn)"; exit 0; }
+  echo "  Backend:  https://$PROJECT_NAME-staging-backend.\${DEPLOIO_HASH}.deploio.app/api/auth/me/"
+  echo "  Frontend: https://$PROJECT_NAME-staging-frontend.\${DEPLOIO_HASH}.deploio.app"
   exit 0
 fi
 DEPLOYEOF2
@@ -569,8 +570,9 @@ echo "  Frontend: https://www.${DOMAIN}"
 DEPLOYEOF3
   else
     cat >> deploy.sh << DEPLOYEOF4
-echo "  Backend:  https://$PROJECT_NAME-production-backend.deploio.app/api/auth/me/"
-echo "  Frontend: https://$PROJECT_NAME-production-frontend.deploio.app"
+[ -n "\$DEPLOIO_HASH" ] || { echo "  (URLs: DEPLOIO_HASH fehlt in .env — bash deploy-init.sh schreibt ihn)"; exit 0; }
+echo "  Backend:  https://$PROJECT_NAME-production-backend.\${DEPLOIO_HASH}.deploio.app/api/auth/me/"
+echo "  Frontend: https://$PROJECT_NAME-production-frontend.\${DEPLOIO_HASH}.deploio.app"
 DEPLOYEOF4
   fi
   chmod +x deploy.sh
@@ -658,6 +660,24 @@ _nctl_setzen() {
   local fehler
   fehler=$(nctl "$@" 2>&1) || die "$was fehlgeschlagen: $(echo "$fehler" | tail -2)"
   ok "  $was"
+}
+
+# Liest den Projekt-Hash aus der echten Adresse einer App (cnameTarget:
+# <app>.<hash>.deploio.app). Ohne ihn zeigen FRONTEND_URL, CORS und
+# PUBLIC_API_URL auf einen Hostnamen, den es nicht gibt — der Magic Link führte
+# ins Leere, Login unmöglich (in den albula-Repos dreimal von Hand korrigiert).
+# Eine frisch angelegte App bekommt ihre Adresse erst nach ein paar Sekunden.
+_deploio_hash() {
+  local app="$1" ziel i
+  for ((i = 0; i < ${DEPLOIO_HASH_VERSUCHE:-30}; i++)); do
+    ziel=$(nctl get app "$app" --project="$DEPLOIO_PROJECT" -o yaml 2>/dev/null | awk '/cnameTarget:/ {print $2; exit}')
+    if [[ "$ziel" =~ ^${app}\.([a-z0-9]+)\.deploio\.app$ ]]; then
+      echo "${BASH_REMATCH[1]}"
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
 }
 
 # Ersetzt den DB-Namen (Pfad) eines Connection-Strings, Query (?sslmode=…) bleibt.
@@ -794,6 +814,19 @@ _nctl_setzen "${PROJECT_NAME}-${env}-frontend buildpack" update app ${PROJECT_NA
 INITEOF_APP
   done
 
+  _FIRST_ENV="${DEPLOY_ENVS%% *}"
+  cat >> deploy-init.sh << INITEOF_HASH
+DEPLOIO_HASH=\$(_deploio_hash ${PROJECT_NAME}-${_FIRST_ENV}-backend) \\
+  || die "Projekt-Hash nicht lesbar (cnameTarget von ${PROJECT_NAME}-${_FIRST_ENV}-backend) — ohne ihn zeigen alle URLs auf einen toten Hostnamen."
+ok "  Projekt-Hash: \$DEPLOIO_HASH  (Apps unter <app>.\$DEPLOIO_HASH.deploio.app)"
+if grep -q '^DEPLOIO_HASH=' .env 2>/dev/null; then
+  sed -i '' "s|^DEPLOIO_HASH=.*|DEPLOIO_HASH=\$DEPLOIO_HASH|" .env
+else
+  echo "DEPLOIO_HASH=\$DEPLOIO_HASH" >> .env
+fi
+
+INITEOF_HASH
+
   # Worker jobs (only if tasks feature active)
   if $USE_TASKS; then
     cat >> deploy-init.sh << 'INITEOF_WORKER'
@@ -823,9 +856,9 @@ INITEOF_ENV
       _API="https://api.${DOMAIN}/api"
     else
       _ALLOWED=".deploio.app"
-      _FRONTEND="https://${PROJECT_NAME}-${env}-frontend.deploio.app"
+      _FRONTEND="https://${PROJECT_NAME}-${env}-frontend.\${DEPLOIO_HASH}.deploio.app"
       _CORS="$_FRONTEND"
-      _API="https://${PROJECT_NAME}-${env}-backend.deploio.app/api"
+      _API="https://${PROJECT_NAME}-${env}-backend.\${DEPLOIO_HASH}.deploio.app/api"
     fi
     cat >> deploy-init.sh << INITEOF_ENV_APP
 SK=\$(openssl rand -hex 32)
@@ -887,8 +920,8 @@ INITEOF7
 echo ""
 log "Step 7 — Production DNS + Custom Domains"
 warn "  Set DNS CNAMEs at your registrar before running this step:"
-warn "    api.${DOMAIN}  CNAME  ${PROJECT_NAME}-production-backend.deploio.app"
-warn "    www.${DOMAIN}  CNAME  ${PROJECT_NAME}-production-frontend.deploio.app"
+warn "    api.${DOMAIN}  CNAME  ${PROJECT_NAME}-production-backend.\${DEPLOIO_HASH}.deploio.app"
+warn "    www.${DOMAIN}  CNAME  ${PROJECT_NAME}-production-frontend.\${DEPLOIO_HASH}.deploio.app"
 warn "  Infomaniak: use API v2 (/2/zones/{domain}/records) — v1 breaks DKIM records."
 warn "  Apex redirect (${DOMAIN} → www): manual in Infomaniak Manager → Weiterleitungen"
 echo ""
@@ -911,12 +944,12 @@ echo ""
 INITEOF9
 
   if $USE_STAGING; then
-    echo "echo \"  Staging: https://${PROJECT_NAME}-staging-frontend.deploio.app\"" >> deploy-init.sh
+    echo "echo \"  Staging: https://${PROJECT_NAME}-staging-frontend.\${DEPLOIO_HASH}.deploio.app\"" >> deploy-init.sh
   fi
   if [[ -n "$DOMAIN" ]]; then
     echo "echo \"  Production: https://www.${DOMAIN}\"" >> deploy-init.sh
   else
-    echo "echo \"  Production: https://${PROJECT_NAME}-production-frontend.deploio.app\"" >> deploy-init.sh
+    echo "echo \"  Production: https://${PROJECT_NAME}-production-frontend.\${DEPLOIO_HASH}.deploio.app\"" >> deploy-init.sh
   fi
   cat >> deploy-init.sh << INITEOF12
 echo ""

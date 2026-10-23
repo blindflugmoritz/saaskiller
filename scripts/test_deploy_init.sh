@@ -44,6 +44,7 @@ case "$1 $2" in
   "get projects")         printf 'PROJECT\nn10687\n' ;;
   "get postgresdatabase") echo "postgres://u7k2q9:secret@$3.n10687.db.postgres.nineapis.ch/u7k2q9?sslmode=require" ;;
   "get postgres")         echo "postgres://dbadmin:secret@$3.n10687.db.nineapis.ch/postgres?sslmode=require" ;;
+  "get app")              printf 'kind: Application\nstatus:\n  atProvider:\n    cnameTarget: %s.74abc12.deploio.app\n' "$3" ;;
   "get apiserviceaccount") printf 'client_id: fake-id\nclient_secret: fake-secret\n' ;;
 esac
 exit 0
@@ -117,6 +118,12 @@ domain=casea.ch" && {
   expect    A '^nctl update app casea-staging-backend .*--worker-job-name=qcluster' "worker job"
   expect    A 'create app casea-production-backend .*bootstrap_database\.py && python manage\.py collectstatic' "release runs bootstrap before migrate"
   grep -q '^ENV=${1:-staging}$' "$WORK/casea/deploy.sh" && pass "deploy.sh default = staging" || fail "deploy.sh default != staging"
+  expect    A 'FRONTEND_URL=https://casea-staging-frontend\.74abc12\.deploio\.app '   "staging FRONTEND_URL has project hash"
+  expect    A 'CORS_ALLOWED_ORIGINS=https://casea-staging-frontend\.74abc12\.deploio\.app ' "staging CORS has project hash"
+  expect    A 'PUBLIC_API_URL=https://casea-staging-backend\.74abc12\.deploio\.app/api ' "staging PUBLIC_API_URL has project hash"
+  expect_no A '[a-z]-(frontend|backend)\.deploio\.app'                          "no hash-less deploio.app host"
+  out_has   A 'CNAME  casea-production-frontend\.74abc12\.deploio\.app'        "DNS CNAME target has project hash"
+  grep -q '^DEPLOIO_HASH=74abc12$' "$WORK/casea/.env" && pass "DEPLOIO_HASH written to .env" || fail "DEPLOIO_HASH missing in .env"
 }
 
 # ── B: one environment → production ──────────────────────────────────────────
@@ -132,6 +139,7 @@ db=shared" && {
   expect    B '^nctl create app caseb-production-backend '                    "production backend"
   expect    B '^nctl create postgresdatabase caseb-production-db '            "shared DB production"
   expect_no B '^nctl create postgres '                                         "no dedicated server"
+  expect    B 'FRONTEND_URL=https://caseb-production-frontend\.74abc12\.deploio\.app ' "production FRONTEND_URL has project hash (no domain)"
   grep -q '^ENV=${1:-production}$' "$WORK/caseb/deploy.sh" && pass "deploy.sh default = production" || fail "deploy.sh default != production"
   (cd "$WORK/caseb" && bash deploy.sh staging >/dev/null 2>&1) && fail "deploy.sh accepts 'staging'" || pass "deploy.sh rejects 'staging'"
   [[ ! -f "$WORK/caseb/.github/workflows/deploy-staging.yml" ]] && pass "staging workflow removed" || fail "staging workflow still present"
@@ -183,6 +191,12 @@ if [[ -d "$WORK/casea" ]]; then
   run_init casea X FAKE_NCTL_FAIL='^create ' FAKE_NCTL_FAIL_MSG='Error: apps.deplo.io "x" already exists'
   [[ $RC == 0 ]] && pass "exit 0" || { fail "exit $RC"; tail -5 "$WORK/X.out"; }
   out_has   X 'existiert schon'                                                "reported as existing"
+
+  echo "Failure — project hash unreadable"
+  run_init casea H FAKE_NCTL_FAIL='^get app ' DEPLOIO_HASH_VERSUCHE=1
+  [[ $RC != 0 ]] && pass "exit $RC (non-zero)" || fail "exit 0 without project hash"
+  out_has   H 'Projekt-Hash nicht lesbar'                                      "missing hash detected"
+  expect_no H '--env=FRONTEND_URL'                                             "no env vars with dead hostnames"
 
   echo "Failure — empty connection string"
   run_init casea E FAKE_NCTL_FAIL='get postgresdatabase casea-staging-db'

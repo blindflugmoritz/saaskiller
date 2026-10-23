@@ -22,5 +22,5 @@ export default defineConfig({
 			use: { ...devices['Desktop Chrome'] },
 		},
 	],
-	// Run against staging: E2E_BASE_URL=https://myapp-staging-frontend.deploio.app npm run test:e2e:smoke
+	// Run against staging: E2E_BASE_URL=https://myapp-staging-frontend.<hash>.deploio.app npm run test:e2e:smoke  (<hash> = DEPLOIO_HASH in .env)
 });

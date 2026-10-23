@@ -138,7 +138,7 @@ The helper calls `python manage.py create_test_token` (only works when `DEBUG=Tr
 npm run test:e2e:smoke     # ~30s, @smoke-tagged tests only
 npm run test:e2e           # full suite
 npm run test:e2e:ui        # interactive Playwright UI for debugging
-E2E_BASE_URL=https://myapp-staging-frontend.deploio.app npm run test:e2e:smoke  # against staging
+E2E_BASE_URL=https://myapp-staging-frontend.<hash>.deploio.app npm run test:e2e:smoke  # against staging
 ```
 
 **Tagging:** Mark critical tests with `@smoke` in the test name. These run in ~30s and must be green before any deploy.
